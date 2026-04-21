@@ -5,6 +5,6 @@ public record VehicleResponseDTO(
         int horsepower,
         int torque,
         String drivetrain,
-        int price
+        double price
 ) {
 }

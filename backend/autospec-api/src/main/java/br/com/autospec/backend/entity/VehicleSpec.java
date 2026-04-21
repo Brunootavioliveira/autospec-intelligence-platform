@@ -19,10 +19,11 @@ public class VehicleSpec {
     private String brand;
     private String model;
     private String version;
+    private int year;
 
     private String engine;
     private int horsepower;
     private int torque;
     private String drivetrain;
-    private int price;
+    private double price;
 }
