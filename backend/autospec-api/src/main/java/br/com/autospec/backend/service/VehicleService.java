@@ -46,7 +46,7 @@ public class VehicleService {
         }
         RestTemplate restTemplate = new RestTemplate();
 
-        String url = "http://localhost:5000/specs";
+        String url = "http://ai-service:5000/specs";
 
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON); //“estou enviando JSON”

@@ -29,12 +29,3 @@ build/
 
 .env
 .env.properties
-
-# Python
-venv/
-.venv/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.Python
