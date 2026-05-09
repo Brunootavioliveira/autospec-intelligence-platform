@@ -3,12 +3,14 @@ package br.com.autospec.backend.service;
 import br.com.autospec.backend.dto.VehicleRequestDTO;
 import br.com.autospec.backend.dto.VehicleResponseDTO;
 import br.com.autospec.backend.entity.VehicleSpec;
+import br.com.autospec.backend.mapper.VehicleSpecMapper;
 import br.com.autospec.backend.repository.VehicleSpecRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.http.HttpHeaders;
 
@@ -19,11 +21,13 @@ import java.util.Optional;
 public class VehicleService {
 
     private final VehicleSpecRepository vehicleSpecRepository;
+    private final VehicleSpecMapper vehicleSpecMapper;
 
     public String getVehicleInfo() {
         return "Vehicle service working";
     }
 
+    @Transactional
     public VehicleResponseDTO generateVehicleSpec(VehicleRequestDTO request) {
 
         Optional<VehicleSpec> existing = vehicleSpecRepository.findByBrandAndModelAndVersionAndYear(
@@ -49,7 +53,7 @@ public class VehicleService {
         String url = "http://ai-service:5000/specs";
 
         HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON); //“estou enviando JSON”
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<VehicleRequestDTO> entity = new HttpEntity<>(request, headers);
 
@@ -82,5 +86,14 @@ public class VehicleService {
         vehicleSpecRepository.save(vehicleSpec);
 
         return responseBody;
+    }
+
+    @Transactional(readOnly = true)
+    public VehicleResponseDTO findById(Long id) {
+
+        VehicleSpec vehicleSpec = vehicleSpecRepository.findById(id)
+                .orElseThrow(()-> new RuntimeException("Veiculo não encontrado"));
+
+        return vehicleSpecMapper.toResponse(vehicleSpec);
     }
 }
