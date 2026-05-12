@@ -3,17 +3,16 @@ package br.com.autospec.backend.service;
 import br.com.autospec.backend.dto.VehicleRequestDTO;
 import br.com.autospec.backend.dto.VehicleResponseDTO;
 import br.com.autospec.backend.entity.VehicleSpec;
+import br.com.autospec.backend.exception.ResourceNotFoundException;
 import br.com.autospec.backend.mapper.VehicleSpecMapper;
 import br.com.autospec.backend.repository.VehicleSpecRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpEntity;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.http.HttpHeaders;
-
+import org.springframework.web.reactive.function.client.WebClient;
 import java.util.Optional;
 
 @Service
@@ -22,6 +21,7 @@ public class VehicleService {
 
     private final VehicleSpecRepository vehicleSpecRepository;
     private final VehicleSpecMapper vehicleSpecMapper;
+    private final WebClient webClient;
 
     public String getVehicleInfo() {
         return "Vehicle service working";
@@ -38,51 +38,24 @@ public class VehicleService {
         );
 
         if (existing.isPresent()) {
-            VehicleSpec spec = existing.get();
-
-            return new VehicleResponseDTO(
-                    spec.getEngine(),
-                    spec.getHorsepower(),
-                    spec.getTorque(),
-                    spec.getDrivetrain(),
-                    spec.getPrice()
-            );
+            return vehicleSpecMapper.toResponse(existing.get());
         }
-        RestTemplate restTemplate = new RestTemplate();
 
-        String url = "http://ai-service:5000/specs";
-
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-
-        HttpEntity<VehicleRequestDTO> entity = new HttpEntity<>(request, headers);
-
-        ResponseEntity<VehicleResponseDTO> response = restTemplate.postForEntity(
-                url,
-                entity,
-                VehicleResponseDTO.class
-        );
-
-
-        VehicleResponseDTO responseBody = response.getBody();
+        VehicleResponseDTO responseBody = webClient
+                .post()
+                .uri("/specs")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .bodyToMono(VehicleResponseDTO.class)
+                .blockOptional()
+                .orElseThrow(() -> new RuntimeException("AI service retornou resposta vazia"));
 
         if (responseBody.engine().equals("Unknown")) {
             return responseBody;
         }
 
-        VehicleSpec vehicleSpec = new VehicleSpec();
-        vehicleSpec.setBrand(request.brand());
-        vehicleSpec.setModel(request.model());
-        vehicleSpec.setVersion(request.version());
-        vehicleSpec.setYear(request.year());
-
-        vehicleSpec.setEngine(responseBody.engine());
-        vehicleSpec.setHorsepower(responseBody.horsepower());
-        vehicleSpec.setTorque(responseBody.torque());
-        vehicleSpec.setDrivetrain(responseBody.drivetrain());
-        vehicleSpec.setPrice(responseBody.price());
-
-
+        VehicleSpec vehicleSpec = vehicleSpecMapper.toEntity(request, responseBody);
         vehicleSpecRepository.save(vehicleSpec);
 
         return responseBody;
@@ -92,8 +65,29 @@ public class VehicleService {
     public VehicleResponseDTO findById(Long id) {
 
         VehicleSpec vehicleSpec = vehicleSpecRepository.findById(id)
-                .orElseThrow(()-> new RuntimeException("Veiculo não encontrado"));
+                .orElseThrow(()-> new ResourceNotFoundException("Veiculo não encontrado"));
 
         return vehicleSpecMapper.toResponse(vehicleSpec);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VehicleResponseDTO> findAll(Pageable pageable) {
+
+        if (pageable.getPageSize() > 10) {
+            throw new IllegalArgumentException("Máximo de 10 itens por página");
+        }
+
+        Page<VehicleSpec> vehicleSpec = vehicleSpecRepository.findAll(pageable);
+
+        return vehicleSpec.map(vehicleSpecMapper::toResponse);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+
+        VehicleSpec vehicleSpec = vehicleSpecRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Veiculo não encontrado"));
+
+        vehicleSpecRepository.delete(vehicleSpec);
     }
 }
