@@ -7,10 +7,10 @@ import org.mapstruct.Mapping;
 
 @Mapper(componentModel = "spring")
 public interface VehicleSpecMapper {
-    @Mapping(source = "request.brand", target = "brand")
-    @Mapping(source = "request.model", target = "model")
-    @Mapping(source = "request.version", target = "version")
-    @Mapping(source = "request.year", target = "year")
+    @Mapping(source = "dto.brand", target = "brand")
+    @Mapping(source = "dto.model", target = "model")
+    @Mapping(source = "dto.version", target = "version")
+    @Mapping(source = "dto.year", target = "year")
     @Mapping(source = "response.engine", target = "engine")
     @Mapping(source = "response.horsepower", target = "horsepower")
     @Mapping(source = "response.torque", target = "torque")
@@ -24,5 +24,23 @@ public interface VehicleSpecMapper {
     @Mapping(source = "response.electricRange", target = "electricRange")
     @Mapping(source = "response.price", target = "price")
     VehicleSpec toEntity(VehicleRequestDTO dto, VehicleResponseDTO response);
+
+    @Mapping(source = "id", target = "id")
+    @Mapping(source = "brand", target = "brand")
+    @Mapping(source = "model", target = "model")
+    @Mapping(source = "version", target = "version")
+    @Mapping(source = "year", target = "year")
+    @Mapping(source = "engine", target = "engine")
+    @Mapping(source = "horsepower", target = "horsepower")
+    @Mapping(source = "torque", target = "torque")
+    @Mapping(source = "drivetrain", target = "drivetrain")
+    @Mapping(source = "topSpeed", target = "topSpeed")
+    @Mapping(source = "acceleration", target = "acceleration")
+    @Mapping(source = "length", target = "length")
+    @Mapping(source = "width", target = "width")
+    @Mapping(source = "height", target = "height")
+    @Mapping(source = "weight", target = "weight")
+    @Mapping(source = "electricRange", target = "electricRange")
+    @Mapping(source = "price", target = "price")
     VehicleResponseDTO toResponse(VehicleSpec vehicleSpec);
 }
