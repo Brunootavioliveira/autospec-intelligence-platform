@@ -1,5 +1,6 @@
 package br.com.autospec.backend.core.security;
 
+import br.com.autospec.backend.core.exception.CryptoException;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 import javax.crypto.Cipher;
@@ -25,7 +26,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             cipher.init(Cipher.ENCRYPT_MODE, keySpec);
             return Base64.getEncoder().encodeToString(cipher.doFinal(attribute.getBytes()));
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao criptografar dado para o banco", e);
+            throw new CryptoException("Erro crítico de segurança ao criptografar dados para o banco de dados.", e);
         }
     }
 
@@ -37,7 +38,7 @@ public class CryptoConverter implements AttributeConverter<String, String> {
             cipher.init(Cipher.DECRYPT_MODE, keySpec);
             return new String(cipher.doFinal(Base64.getDecoder().decode(dbData)));
         } catch (Exception e) {
-            throw new RuntimeException("Erro ao descriptografar dado do banco", e);
+            throw new CryptoException("Erro crítico de segurança ao descriptografar dados vindos do banco de dados.", e);
         }
     }
 }

@@ -2,6 +2,7 @@ package br.com.autospec.backend.core.handler;
 
 import br.com.autospec.backend.core.common.ErrorResponseDTO;
 import br.com.autospec.backend.core.exception.BusinessException;
+import br.com.autospec.backend.core.exception.CryptoException;
 import br.com.autospec.backend.core.exception.ResourceNotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -66,7 +67,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponseDTO> handlerGeneric(Exception ex) {
 
         log.error("Erro não esperado: ", ex);
-        
+
         return ResponseEntity.internalServerError().body(new ErrorResponseDTO(
                 LocalDateTime.now(),
                 500,
@@ -99,6 +100,15 @@ public class GlobalExceptionHandler {
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "JSON malformado ou erro na leitura dos dados"
+        ));
+    }
+
+    @ExceptionHandler(CryptoException.class)
+    public ResponseEntity<ErrorResponseDTO> handlerCrypto(CryptoException ex) {
+        return ResponseEntity.internalServerError().body(new ErrorResponseDTO(
+                LocalDateTime.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                ex.getMessage()
         ));
     }
 }
