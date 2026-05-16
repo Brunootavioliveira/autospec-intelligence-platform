@@ -1,5 +1,6 @@
 package br.com.autospec.backend.modules.user.entity;
 
+import br.com.autospec.backend.core.security.CryptoConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
@@ -27,10 +28,12 @@ public class User implements UserDetails {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @Convert(converter = CryptoConverter.class)
     @NotBlank
     @Column(length = 100)
     private String name;
 
+    @Convert(converter = CryptoConverter.class)
     @NotBlank
     @Email
     @Column(unique = true, length = 150)

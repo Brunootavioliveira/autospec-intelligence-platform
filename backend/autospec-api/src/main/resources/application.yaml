@@ -42,3 +42,7 @@ server:
 
   tomcat:
     max-http-form-post-size: 1MB
+
+app:
+  security:
+    crypto-key: ${DB_CRYPTO_KEY}
