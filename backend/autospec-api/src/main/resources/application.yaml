@@ -33,6 +33,7 @@ spring:
     multipart:
       max-request-size: 1MB
       max-file-size: 1MB
+
 jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION}
@@ -46,3 +47,5 @@ server:
 app:
   security:
     crypto-key: ${DB_CRYPTO_KEY}
+  retention:
+    specs-months: 6
