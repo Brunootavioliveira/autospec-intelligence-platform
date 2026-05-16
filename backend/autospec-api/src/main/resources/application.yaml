@@ -20,8 +20,25 @@ spring:
       pageable:
         max-page-size: 10
 
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+
   cache:
     type: redis
-    
+    redis:
+      time-to-live: 3600000
+
+  servlet:
+    multipart:
+      max-request-size: 1MB
+      max-file-size: 1MB
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION}
+
 server:
   port: 8080
+
+  tomcat:
+    max-http-form-post-size: 1MB
