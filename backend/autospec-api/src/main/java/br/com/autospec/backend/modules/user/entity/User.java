@@ -1,5 +1,6 @@
 package br.com.autospec.backend.modules.user.entity;
 
+import br.com.autospec.backend.core.common.Auditable;
 import br.com.autospec.backend.core.security.CryptoConverter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -23,7 +24,7 @@ import java.util.List;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User implements UserDetails {
+public class User extends Auditable implements UserDetails {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
