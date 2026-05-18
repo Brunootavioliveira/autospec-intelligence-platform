@@ -96,7 +96,7 @@ public class VehicleService {
         return vehicleSpec.map(vehicleSpecMapper::toResponse);
     }
 
-    @CacheEvict(value = "vehicle-specs", key = "#id")
+    @Cacheable(value = "vehicle-specs-by-id", key = "#id")
     @Transactional
     public void delete(Long id) {
 

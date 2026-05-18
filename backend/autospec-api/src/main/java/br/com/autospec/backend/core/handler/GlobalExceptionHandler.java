@@ -108,7 +108,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.internalServerError().body(new ErrorResponseDTO(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                ex.getMessage()
+                "Erro interno de processamento de dados."
         ));
     }
 }

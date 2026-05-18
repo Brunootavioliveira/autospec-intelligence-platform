@@ -73,15 +73,8 @@ public class HmacFilter extends OncePerRequestFilter {
 
         String normalizedBody = objectMapper.writeValueAsString(jsonNode);
 
-        System.out.println("BODY: " + normalizedBody);
-        System.out.println("TIMESTAMP: " + timestamp);
-
         String data = normalizedBody + timestamp;
-
         String expectedSignature = HmacUtil.generate(data, secret);
-
-        System.out.println("EXPECTED: " + expectedSignature);
-        System.out.println("RECEIVED: " + signature);
 
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.UTF_8),
