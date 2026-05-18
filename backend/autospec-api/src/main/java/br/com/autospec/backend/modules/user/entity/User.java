@@ -33,8 +33,7 @@ public class User extends Auditable implements UserDetails {
     @NotBlank
     @Column(length = 100)
     private String name;
-
-    @Convert(converter = CryptoConverter.class)
+    
     @NotBlank
     @Email
     @Column(unique = true, length = 150)

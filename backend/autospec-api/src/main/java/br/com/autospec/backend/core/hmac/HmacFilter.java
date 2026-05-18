@@ -2,6 +2,8 @@ package br.com.autospec.backend.core.hmac;
 
 
 import br.com.autospec.backend.core.common.ErrorResponseDTO;
+import br.com.autospec.backend.core.http.CachedBodyRequestWrapper;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -11,6 +13,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StreamUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 import org.springframework.web.util.ContentCachingRequestWrapper;
 
@@ -39,8 +42,9 @@ public class HmacFilter extends OncePerRequestFilter {
             filterChain.doFilter(request, response);
             return;
         }
-        ContentCachingRequestWrapper wrappedRequest =
-                new ContentCachingRequestWrapper(request);
+
+        CachedBodyRequestWrapper wrappedRequest =
+                new CachedBodyRequestWrapper(request);
 
         String signature = wrappedRequest.getHeader("X-Signature");
         String timestamp = wrappedRequest.getHeader("X-Timestamp");
@@ -50,13 +54,34 @@ public class HmacFilter extends OncePerRequestFilter {
             return;
         }
 
-        wrappedRequest.getParameterMap();
+        byte[] bodyBytes = wrappedRequest.getCachedBody();
 
-        byte[] content = wrappedRequest.getContentAsByteArray();
-        String body = new String(content, StandardCharsets.UTF_8);
+        String rawBody = new String(bodyBytes, StandardCharsets.UTF_8);
 
-        String expectedSignature =
-                HmacUtil.generate(body + timestamp, secret);
+        if (rawBody.isBlank()) {
+            buildError(response, "Empty request body");
+            return;
+        }
+
+        JsonNode jsonNode;
+        try {
+            jsonNode = objectMapper.readTree(rawBody);
+        } catch (Exception e) {
+            buildError(response, "Invalid JSON payload");
+            return;
+        }
+
+        String normalizedBody = objectMapper.writeValueAsString(jsonNode);
+
+        System.out.println("BODY: " + normalizedBody);
+        System.out.println("TIMESTAMP: " + timestamp);
+
+        String data = normalizedBody + timestamp;
+
+        String expectedSignature = HmacUtil.generate(data, secret);
+
+        System.out.println("EXPECTED: " + expectedSignature);
+        System.out.println("RECEIVED: " + signature);
 
         if (!MessageDigest.isEqual(
                 expectedSignature.getBytes(StandardCharsets.UTF_8),
@@ -87,9 +112,7 @@ public class HmacFilter extends OncePerRequestFilter {
             long requestTime = Long.parseLong(timestampHeader);
             long now = System.currentTimeMillis();
 
-            long diff = Math.abs(now - requestTime);
-
-            return diff > (5 * 60 * 1000);
+            return Math.abs(now - requestTime) > (5 * 60 * 1000);
 
         } catch (Exception e) {
             return true;

@@ -54,8 +54,8 @@ public class    SecurityConfig {
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(hmacFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(rateLimitFilter, HmacFilter.class)
-                .addFilterBefore(jwtFilter, RateLimitFilter.class)
+                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();
     }
 }

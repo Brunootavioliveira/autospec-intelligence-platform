@@ -90,7 +90,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(new ErrorResponseDTO(
                 LocalDateTime.now(),
                 HttpStatus.UNAUTHORIZED.value(),
-                "Token inválido ou expirado"
+                "Invalid email or password"
         ));
     }
 
