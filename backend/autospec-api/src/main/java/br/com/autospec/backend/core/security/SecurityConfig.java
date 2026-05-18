@@ -1,6 +1,7 @@
 package br.com.autospec.backend.core.security;
 
 import br.com.autospec.backend.config.CorsConfig;
+import br.com.autospec.backend.core.hmac.HmacFilter;
 import br.com.autospec.backend.modules.auth.filter.JwtFilter;
 import br.com.autospec.backend.modules.auth.ratelimit.RateLimitFilter;
 import lombok.RequiredArgsConstructor;
@@ -26,6 +27,7 @@ public class    SecurityConfig {
     private final AuthenticationProvider authenticationProvider;
     private final CorsConfig corsConfig;
     private final RateLimitFilter rateLimitFilter;
+    private final HmacFilter hmacFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -51,8 +53,9 @@ public class    SecurityConfig {
                         // GET: qualquer autenticado (ANALYST, ADMIN, VIEWER)
                         .anyRequest().authenticated()
                 )
-                .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class)
-                .addFilterBefore(rateLimitFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(hmacFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(rateLimitFilter, HmacFilter.class)
+                .addFilterBefore(jwtFilter, RateLimitFilter.class)
                 .build();
     }
 }

@@ -47,5 +47,6 @@ server:
 app:
   security:
     crypto-key: ${DB_CRYPTO_KEY}
+    hmac-secret: ${HMAC_SECRET}
   retention:
     specs-months: 6
