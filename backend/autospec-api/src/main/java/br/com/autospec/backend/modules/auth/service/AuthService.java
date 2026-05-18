@@ -3,6 +3,8 @@ package br.com.autospec.backend.modules.auth.service;
 import br.com.autospec.backend.modules.auth.dto.AuthResponseDTO;
 import br.com.autospec.backend.modules.auth.dto.LoginRequestDTO;
 import br.com.autospec.backend.modules.auth.dto.RegisterRequestDTO;
+import br.com.autospec.backend.modules.auth.entity.RefreshToken;
+import br.com.autospec.backend.modules.auth.repository.RefreshTokenRepository;
 import br.com.autospec.backend.modules.user.entity.User;
 import br.com.autospec.backend.core.exception.ResourceNotFoundException;
 import br.com.autospec.backend.modules.user.repository.UserRepository;
@@ -20,6 +22,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authManager;
+    private final RefreshTokenService refreshTokenService;
+    private final RefreshTokenRepository refreshTokenRepository;
 
 
     public AuthResponseDTO register(RegisterRequestDTO request) {
@@ -32,18 +36,55 @@ public class AuthService {
                 .build();
 
         userService.create(user);
-        String token = jwtService.generateToken(user);
-        return new AuthResponseDTO(token, user.getName(), user.getRole().name());
+
+        String accessToken = jwtService.generateToken(user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+        return new AuthResponseDTO(
+                accessToken,
+                refreshToken.getToken(),
+                user.getName(),
+                user.getRole().name()
+        );
     }
 
 
     public AuthResponseDTO login(LoginRequestDTO request) {
         authManager.authenticate(
                 new UsernamePasswordAuthenticationToken(request.email(), request.password()));
+
         User user = userService.findByEmail(request.email());
         
-        String token = jwtService.generateToken(user);
-        return new AuthResponseDTO(token, user.getName(), user.getRole().name());
+        String accessToken = jwtService.generateToken(user);
+        RefreshToken refreshToken = refreshTokenService.createRefreshToken(user);
+
+        return new AuthResponseDTO(
+                accessToken,
+                refreshToken.getToken(),
+                user.getName(),
+                user.getRole().name()
+        );
+    }
+
+    public AuthResponseDTO refresh(String refreshTokenValue) {
+        RefreshToken refreshToken = refreshTokenService.validate(refreshTokenValue);
+
+        User user = refreshToken.getUser();
+
+        RefreshToken newRefreshToken = refreshTokenService.createRefreshToken(user);
+        String newAccessToken = jwtService.generateToken(user);
+
+        return new AuthResponseDTO(
+                newAccessToken,
+                newRefreshToken.getToken(),
+                user.getName(),
+                user.getRole().name()
+        );
+    }
+
+    public void logout(String refreshTokenValue) {
+        refreshTokenRepository.findByToken(refreshTokenValue)
+                .ifPresent(refreshTokenRepository::delete);
     }
 }
 

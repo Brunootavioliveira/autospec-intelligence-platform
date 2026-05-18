@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -20,6 +21,7 @@ public class DataRetentionJob {
     private int retentionMonths;
 
     @Scheduled(cron = "0 0 0 * * SUN")
+    @Transactional
     public void runDataCleanup() {
         log.info("Iniciando a rotina semanal de limpeza de dados expirados...");
 

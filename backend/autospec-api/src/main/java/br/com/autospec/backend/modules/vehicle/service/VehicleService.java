@@ -28,15 +28,14 @@ public class VehicleService {
     private final VehicleSpecMapper vehicleSpecMapper;
     private final WebClient webClient;
 
-
-    public String getVehicleInfo() {
-        return "Vehicle service working";
+    @Cacheable(value = "vehicle-specs-by-key",
+            key = "#request.brand() + '-' + #request.model() + '-' + #request.version() + '-' + #request.year()")
+    public VehicleResponseDTO generateVehicleSpec(VehicleRequestDTO request) {
+        return doGenerateVehicleSpec(request);
     }
 
-    @Cacheable(value = "vehicle-specs",
-            key = "#request.brand() + '-' + #request.model() + '-' + #request.version() + '-' + #request.year()")
     @Transactional
-    public VehicleResponseDTO generateVehicleSpec(VehicleRequestDTO request) {
+    public VehicleResponseDTO doGenerateVehicleSpec(VehicleRequestDTO request) {
 
         int currentYear = LocalDate.now().getYear();
 
@@ -75,7 +74,7 @@ public class VehicleService {
         return vehicleSpecMapper.toResponse(savedVehicle);
     }
 
-    @Cacheable(value = "vehicle-specs", key = "#id")
+    @Cacheable(value = "vehicle-specs-by-id", key = "#id")
     @Transactional(readOnly = true)
     public VehicleResponseDTO findById(Long id) {
 
