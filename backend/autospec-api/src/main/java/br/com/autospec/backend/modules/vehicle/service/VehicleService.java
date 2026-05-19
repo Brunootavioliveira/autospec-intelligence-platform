@@ -34,6 +34,22 @@ public class VehicleService {
         return doGenerateVehicleSpec(request);
     }
 
+    @Transactional(readOnly = true)
+    public VehicleResponseDTO getVehicleSpec(VehicleRequestDTO request) {
+
+        VehicleSpec vehicle = vehicleSpecRepository
+                .findByBrandAndModelAndVersionAndYear(
+                        request.brand(),
+                        request.model(),
+                        request.version(),
+                        request.year()
+                )
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Vehicle not found"));
+
+        return vehicleSpecMapper.toResponse(vehicle);
+    }
+
     @Transactional
     public VehicleResponseDTO doGenerateVehicleSpec(VehicleRequestDTO request) {
 
@@ -96,7 +112,7 @@ public class VehicleService {
         return vehicleSpec.map(vehicleSpecMapper::toResponse);
     }
 
-    @Cacheable(value = "vehicle-specs-by-id", key = "#id")
+    @CacheEvict(value = "vehicle-specs-by-id", key = "#id")
     @Transactional
     public void delete(Long id) {
 

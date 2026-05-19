@@ -1,7 +1,10 @@
 package br.com.autospec.backend.modules.vehicle.controller;
 
+import br.com.autospec.backend.modules.vehicle.dto.VehicleCompareRequestDTO;
+import br.com.autospec.backend.modules.vehicle.dto.VehicleCompareResponseDTO;
 import br.com.autospec.backend.modules.vehicle.dto.VehicleRequestDTO;
 import br.com.autospec.backend.modules.vehicle.dto.VehicleResponseDTO;
+import br.com.autospec.backend.modules.vehicle.service.VehicleComparisonService;
 import br.com.autospec.backend.modules.vehicle.service.VehicleService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -26,6 +29,7 @@ import org.springframework.web.bind.annotation.*;
 public class VehicleController {
 
     private final VehicleService vehicleService;
+    private final VehicleComparisonService vehicleComparisonService;
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ANALYST', 'ADMIN')")
@@ -39,6 +43,19 @@ public class VehicleController {
     })
     public ResponseEntity<VehicleResponseDTO> generateVehicleSpec(@Valid @RequestBody VehicleRequestDTO request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(vehicleService.generateVehicleSpec(request));
+    }
+
+    @PostMapping("/compare")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Compare two vehicles",
+            description = "Compares two vehicles using brand, model, version and year"
+    )
+    public ResponseEntity<VehicleCompareResponseDTO> compareVehicles(@Valid @RequestBody VehicleCompareRequestDTO request) {
+
+        return ResponseEntity.ok(
+                vehicleComparisonService.compare(request)
+        );
     }
 
     @GetMapping("/{id}")
@@ -57,6 +74,33 @@ public class VehicleController {
     @Operation(summary = "Listar todas as specs paginado")
     public ResponseEntity<Page<VehicleResponseDTO>> findAll(@ParameterObject Pageable pageable) {
         return ResponseEntity.ok(vehicleService.findAll(pageable));
+    }
+
+
+    @GetMapping("/compare")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(
+            summary = "Comparar dois veículos",
+            description = """
+        Compara especificações técnicas de dois veículos pelo ID.
+        
+        Retorna:
+        - vencedor geral
+        - placar da comparação
+        - vencedor por atributo
+        - valores individuais de cada veículo
+        """
+    )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Comparação realizada com sucesso"),
+            @ApiResponse(responseCode = "400", description = "IDs inválidos ou iguais"),
+            @ApiResponse(responseCode = "404", description = "Veículo não encontrado"),
+            @ApiResponse(responseCode = "401", description = "Não autenticado")
+    })
+    public ResponseEntity<VehicleCompareResponseDTO> compare(@RequestParam Long idA, @RequestParam Long idB) {
+        return ResponseEntity.ok(
+                vehicleComparisonService.compare(idA, idB)
+        );
     }
 
     @DeleteMapping("/{id}")
