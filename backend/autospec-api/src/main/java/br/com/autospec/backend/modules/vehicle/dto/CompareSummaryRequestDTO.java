@@ -1,9 +1,8 @@
 package br.com.autospec.backend.modules.vehicle.dto;
 
-public record VehicleCompareResponseDTO(
+public record CompareSummaryRequestDTO(
         VehicleResponseDTO vehicleA,
         VehicleResponseDTO vehicleB,
-        CompareResultDTO comparison,
-        String summary
+        String winner
 ) {
 }

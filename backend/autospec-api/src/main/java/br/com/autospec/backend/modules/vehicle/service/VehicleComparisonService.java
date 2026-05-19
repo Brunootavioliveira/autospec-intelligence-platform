@@ -9,6 +9,7 @@ import br.com.autospec.backend.modules.vehicle.repository.VehicleSpecRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.math.BigDecimal;
 
@@ -19,6 +20,8 @@ public class VehicleComparisonService {
     private final VehicleService vehicleService;
     private final VehicleSpecRepository vehicleSpecRepository;
     private final VehicleSpecMapper vehicleSpecMapper;
+    private final WebClient webClient;
+
 
     @Transactional(readOnly = true)
     public VehicleCompareResponseDTO compare(Long idA, Long idB) {
@@ -129,7 +132,8 @@ public class VehicleComparisonService {
         return new VehicleCompareResponseDTO(
                 a,
                 b,
-                comparison
+                comparison,
+                null
         );
     }
 
@@ -262,10 +266,36 @@ public class VehicleComparisonService {
     @Transactional
     public VehicleCompareResponseDTO compare(VehicleCompareRequestDTO request) {
 
-        VehicleResponseDTO vehicleA = vehicleService.generateVehicleSpec(request.vehicleA());
+        VehicleResponseDTO vehicleA =
+                vehicleService.generateVehicleSpec(request.vehicleA());
 
-        VehicleResponseDTO vehicleB = vehicleService.generateVehicleSpec(request.vehicleB());
+        VehicleResponseDTO vehicleB =
+                vehicleService.generateVehicleSpec(request.vehicleB());
 
-        return buildComparison(vehicleA, vehicleB);
+        VehicleCompareResponseDTO comparison =
+                buildComparison(vehicleA, vehicleB);
+
+        CompareSummaryRequestDTO summaryRequest =
+                new CompareSummaryRequestDTO(
+                        vehicleA,
+                        vehicleB,
+                        comparison.comparison().winner().name()
+                );
+
+        String summary = webClient
+                .post()
+                .uri("/compare-summary")
+                .bodyValue(summaryRequest)
+                .retrieve()
+                .bodyToMono(CompareSummaryResponseDTO.class)
+                .block()
+                .summary();
+
+        return new VehicleCompareResponseDTO(
+                vehicleA,
+                vehicleB,
+                comparison.comparison(),
+                summary
+        );
     }
 }
