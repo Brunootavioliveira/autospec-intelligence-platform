@@ -59,6 +59,13 @@ JSON format:
     "horsepower": number (in HP),
     "torque": number (in Nm),
     "drivetrain": "string (FWD, RWD, AWD or 4WD)",
+    "topSpeed": number (in km/h),
+    "acceleration": number (0-100 km/h in seconds),
+    "length": number (in meters),
+    "width": number (in meters),
+    "height": number (in meters),
+    "weight": number (in kg),
+    "electricRange": number (in km, use 0 if not electric),
     "price": number (in USD, launch price)
 }}
 
@@ -68,6 +75,13 @@ If the vehicle does not exist or you are not certain, return exactly:
     "horsepower": 0,
     "torque": 0,
     "drivetrain": "Unknown",
+    "topSpeed": 0,
+    "acceleration": 0,
+    "length": 0,
+    "width": 0,
+    "height": 0,
+    "weight": 0,
+    "electricRange": 0,
     "price": 0
 }}
 
@@ -104,3 +118,62 @@ Year: {request.year}
     except Exception as e:
         print("Erro na IA:", e)
         return UNKNOWN_RESPONSE
+
+
+
+class CompareSummaryRequest(BaseModel):
+    vehicleA: dict
+    vehicleB: dict
+    winner: str
+
+@app.post("/compare-summary")
+async def compare_summary(request: CompareSummaryRequest):
+
+    prompt = f"""
+You are an automotive comparison assistant.
+
+Generate ONLY a valid JSON object.
+
+JSON format:
+{{
+    "summary": "string"
+}}
+
+Create a short professional comparison summary in Portuguese (Brazil).
+
+The summary must:
+- Mention strengths of both vehicles
+- Mention performance, price and practicality when relevant
+- Be concise (max 2 sentences)
+- Sound natural and premium
+
+Vehicle A:
+{json.dumps(request.vehicleA, ensure_ascii=False)}
+
+Vehicle B:
+{json.dumps(request.vehicleB, ensure_ascii=False)}
+
+Overall winner:
+{request.winner}
+"""
+
+    try:
+        response = await model.generate_content_async(prompt)
+
+        text = response.text.strip()
+
+        print("RAW SUMMARY RESPONSE:\n", text)
+
+        data = extract_json(text)
+
+        if not data:
+            raise Exception("Invalid JSON from AI")
+
+        return data
+
+    except Exception as e:
+        print("Erro ao gerar summary:", e)
+
+        return {
+            "summary": "Comparação realizada com sucesso entre os veículos."
+        }

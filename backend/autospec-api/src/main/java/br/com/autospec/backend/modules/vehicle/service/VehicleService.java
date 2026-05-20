@@ -28,26 +28,11 @@ public class VehicleService {
     private final VehicleSpecMapper vehicleSpecMapper;
     private final WebClient webClient;
 
+    @Transactional
     @Cacheable(value = "vehicle-specs-by-key",
             key = "#request.brand() + '-' + #request.model() + '-' + #request.version() + '-' + #request.year()")
     public VehicleResponseDTO generateVehicleSpec(VehicleRequestDTO request) {
         return doGenerateVehicleSpec(request);
-    }
-
-    @Transactional(readOnly = true)
-    public VehicleResponseDTO getVehicleSpec(VehicleRequestDTO request) {
-
-        VehicleSpec vehicle = vehicleSpecRepository
-                .findByBrandAndModelAndVersionAndYear(
-                        request.brand(),
-                        request.model(),
-                        request.version(),
-                        request.year()
-                )
-                .orElseThrow(() ->
-                        new ResourceNotFoundException("Vehicle not found"));
-
-        return vehicleSpecMapper.toResponse(vehicle);
     }
 
     @Transactional
@@ -110,6 +95,13 @@ public class VehicleService {
         Page<VehicleSpec> vehicleSpec = vehicleSpecRepository.findAll(pageable);
 
         return vehicleSpec.map(vehicleSpecMapper::toResponse);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<VehicleResponseDTO> search(String q, String brand, Integer minYear, Integer maxYear,
+                                           Integer minHp, Integer maxHp, Pageable pageable) {
+        return vehicleSpecRepository.search(q, brand, minYear, maxYear, minHp, maxHp, pageable)
+                .map(vehicleSpecMapper::toResponse);
     }
 
     @CacheEvict(value = "vehicle-specs-by-id", key = "#id")

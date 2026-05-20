@@ -33,7 +33,7 @@ public class User extends Auditable implements UserDetails {
     @NotBlank
     @Column(length = 100)
     private String name;
-    
+
     @NotBlank
     @Email
     @Column(unique = true, length = 150)
@@ -47,23 +47,21 @@ public class User extends Auditable implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role;
 
-    @Override
-    @JsonIgnore
-    public String getPassword() {
-        return password;
-    }
+    public void updateName(String name) { this.name = name; }
+    public void updatePassword(String encodedPassword) { this.password = encodedPassword; }
 
-    @Override
-    @JsonIgnore
+    @Override @JsonIgnore
+    public String getPassword() { return password; }
+
+    @Override @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
-
-    @Override public String getUsername()            { return email; }
-    @Override public boolean isAccountNonExpired()   { return true; }
-    @Override public boolean isAccountNonLocked()    { return true; }
+    @Override public String getUsername()             { return email; }
+    @Override public boolean isAccountNonExpired()    { return true; }
+    @Override public boolean isAccountNonLocked()     { return true; }
     @Override public boolean isCredentialsNonExpired(){ return true; }
-    @Override public boolean isEnabled()             { return true; }
+    @Override public boolean isEnabled()              { return true; }
 
 }

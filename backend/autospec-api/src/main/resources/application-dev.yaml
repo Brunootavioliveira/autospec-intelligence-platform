@@ -3,3 +3,12 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+
+  flyway:
+    enabled: false
+
+app:
+  retention:
+    specs-months: 6
+    history-months: 12
+    sessions-days: 30

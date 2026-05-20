@@ -76,6 +76,20 @@ public class VehicleController {
         return ResponseEntity.ok(vehicleService.findAll(pageable));
     }
 
+    @GetMapping("/search")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Busca textual livre + filtros opcionais (brand, minYear, maxYear, minHp, maxHp)")
+    public ResponseEntity<Page<VehicleResponseDTO>> search(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String brand,
+            @RequestParam(required = false) Integer minYear,
+            @RequestParam(required = false) Integer maxYear,
+            @RequestParam(required = false) Integer minHp,
+            @RequestParam(required = false) Integer maxHp,
+            @ParameterObject Pageable pageable) {
+        return ResponseEntity.ok(vehicleService.search(q, brand, minYear, maxYear, minHp, maxHp, pageable));
+    }
+
 
     @GetMapping("/compare")
     @PreAuthorize("isAuthenticated()")
