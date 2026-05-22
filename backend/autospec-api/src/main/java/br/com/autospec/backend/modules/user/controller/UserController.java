@@ -1,5 +1,6 @@
 package br.com.autospec.backend.modules.user.controller;
 
+import br.com.autospec.backend.modules.user.dto.UpdateRoleRequestDTO;
 import br.com.autospec.backend.modules.auth.service.UserSessionService;
 import br.com.autospec.backend.modules.user.dto.*;
 import br.com.autospec.backend.modules.user.entity.User;
@@ -11,6 +12,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
@@ -76,6 +78,22 @@ public class UserController {
         userSessionService.revokeAllExcept(user, currentToken);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Listar todos os usuários (somente ADMIN)")
+    public ResponseEntity<List<UserSummaryResponseDTO>> listAll() {
+        return ResponseEntity.ok(userService.listAll());
+    }
+
+    @PatchMapping("/{userId}/role")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Atribuir role a um usuário (somente ADMIN)")
+    public ResponseEntity<Void> updateUserRole(@PathVariable Long userId, @Valid @RequestBody UpdateRoleRequestDTO request) {
+        userService.updateRole(userId, request.role());
+        return ResponseEntity.noContent().build();
+    }
+
 
     private String resolveToken(HttpServletRequest request) {
         String bearer = request.getHeader("Authorization");

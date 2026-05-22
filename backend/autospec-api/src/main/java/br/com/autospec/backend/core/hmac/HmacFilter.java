@@ -96,8 +96,7 @@ public class HmacFilter extends OncePerRequestFilter {
         String path = request.getRequestURI();
         String method = request.getMethod();
 
-        return (path.startsWith("/api/v1/vehicles/spec") && method.equals("POST"))
-                || (path.equals("/api/v1/auth/refresh") && method.equals("POST"));
+        return path.equals("/api/v1/auth/refresh") && method.equals("POST");
     }
 
     private boolean isReplayAttack(String timestampHeader) {

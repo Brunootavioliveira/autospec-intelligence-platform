@@ -5,6 +5,7 @@ import br.com.autospec.backend.modules.auth.dto.LoginRequestDTO;
 import br.com.autospec.backend.modules.auth.dto.RegisterRequestDTO;
 import br.com.autospec.backend.modules.auth.entity.RefreshToken;
 import br.com.autospec.backend.modules.auth.repository.RefreshTokenRepository;
+import br.com.autospec.backend.modules.user.entity.Role;
 import br.com.autospec.backend.modules.user.entity.User;
 import br.com.autospec.backend.core.exception.ResourceNotFoundException;
 import br.com.autospec.backend.modules.user.repository.UserRepository;
@@ -32,7 +33,7 @@ public class AuthService {
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .role(request.role())
+                .role(Role.VIEWER)
                 .build();
 
         userService.create(user);

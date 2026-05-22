@@ -64,4 +64,5 @@ public class User extends Auditable implements UserDetails {
     @Override public boolean isCredentialsNonExpired(){ return true; }
     @Override public boolean isEnabled()              { return true; }
 
+    public void updateRole(Role role) { this.role = role; }
 }

@@ -5,12 +5,16 @@ import br.com.autospec.backend.core.exception.ResourceNotFoundException;
 import br.com.autospec.backend.modules.user.dto.ChangePasswordRequestDTO;
 import br.com.autospec.backend.modules.user.dto.UpdateProfileRequestDTO;
 import br.com.autospec.backend.modules.user.dto.UserProfileResponseDTO;
+import br.com.autospec.backend.modules.user.dto.UserSummaryResponseDTO;
+import br.com.autospec.backend.modules.user.entity.Role;
 import br.com.autospec.backend.modules.user.entity.User;
 import br.com.autospec.backend.modules.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -58,4 +62,19 @@ public class UserService {
         user.updatePassword(passwordEncoder.encode(request.newPassword()));
         userRepository.save(user);
     }
+
+    public List<UserSummaryResponseDTO> listAll() {
+        return userRepository.findAll()
+                .stream()
+                .map(UserSummaryResponseDTO::from)
+                .toList();
+    }
+
+    @Transactional
+    public void updateRole(Long userId, Role newRole) {
+        User user = findById(userId);
+        user.updateRole(newRole);
+        userRepository.save(user);
+    }
+
 }

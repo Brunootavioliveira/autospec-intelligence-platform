@@ -20,17 +20,18 @@ public interface VehicleSpecRepository extends JpaRepository<VehicleSpec, Long> 
             int year);
 
 
-    @Query("""
-        SELECT v FROM VehicleSpec v
-        WHERE (:q IS NULL OR LOWER(v.brand) LIKE LOWER(CONCAT('%', :q, '%'))
-                          OR LOWER(v.model) LIKE LOWER(CONCAT('%', :q, '%'))
-                          OR LOWER(v.version) LIKE LOWER(CONCAT('%', :q, '%')))
-        AND (:brand IS NULL OR LOWER(v.brand) = LOWER(:brand))
-        AND (:minYear IS NULL OR v.year >= :minYear)
-        AND (:maxYear IS NULL OR v.year <= :maxYear)
-        AND (:minHp IS NULL OR v.horsepower >= :minHp)
-        AND (:maxHp IS NULL OR v.horsepower <= :maxHp)
-    """)
+    @Query(value = """
+    SELECT * FROM vehicle_specs v
+    WHERE (CAST(:q AS text) IS NULL
+           OR LOWER(v.brand)   LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+           OR LOWER(v.model)   LIKE LOWER(CONCAT('%', CAST(:q AS text), '%'))
+           OR LOWER(v.version) LIKE LOWER(CONCAT('%', CAST(:q AS text), '%')))
+    AND (CAST(:brand AS text) IS NULL OR LOWER(v.brand) = LOWER(CAST(:brand AS text)))
+    AND (CAST(:minYear AS integer) IS NULL OR v.year >= CAST(:minYear AS integer))
+    AND (CAST(:maxYear AS integer) IS NULL OR v.year <= CAST(:maxYear AS integer))
+    AND (CAST(:minHp AS integer) IS NULL OR v.horsepower >= CAST(:minHp AS integer))
+    AND (CAST(:maxHp AS integer) IS NULL OR v.horsepower <= CAST(:maxHp AS integer))
+    """, nativeQuery = true)
     Page<VehicleSpec> search(
             @Param("q")       String q,
             @Param("brand")   String brand,
