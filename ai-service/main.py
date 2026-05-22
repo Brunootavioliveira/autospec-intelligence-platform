@@ -2,7 +2,6 @@ import os
 import json
 import requests
 import google.generativeai as genai
-
 from fastapi import FastAPI
 from pydantic import BaseModel
 from dotenv import load_dotenv
@@ -23,32 +22,11 @@ class VehicleRequest(BaseModel):
     year: int
 
 
-class CompareSummaryRequest(BaseModel):
-    vehicleA: dict
-    vehicleB: dict
-    winner: str
-
-
-UNKNOWN_RESPONSE = {
-    "engine": "Unknown",
-    "horsepower": 0,
-    "torque": 0,
-    "drivetrain": "Unknown",
-    "topSpeed": 0,
-    "acceleration": 0,
-    "length": 0,
-    "width": 0,
-    "height": 0,
-    "weight": 0,
-    "electricRange": 0,
-    "price": 0
-}
-
-
 def extract_json(text: str):
 
     try:
         start = text.find("{")
+
         end = text.rfind("}") + 1
 
         json_str = text[start:end]
@@ -57,101 +35,19 @@ def extract_json(text: str):
 
     except json.JSONDecodeError as e:
         print("Erro ao parsear JSON:", e)
+
         print("Texto recebido:", text)
 
         return None
 
 
-def get_fipe_price(brand: str, model: str, year: int):
-
-    try:
-
-        brands_url = "https://parallelum.com.br/fipe/api/v1/carros/marcas"
-
-        brands_response = requests.get(brands_url)
-
-        brands = brands_response.json()
-
-        brand_id = None
-
-        for item in brands:
-
-            if item["nome"].lower() == brand.lower():
-                brand_id = item["codigo"]
-                break
-
-        if not brand_id:
-            print("Marca não encontrada na FIPE")
-            return 0
-
-        models_url = (
-            f"https://parallelum.com.br/fipe/api/v1/carros/"
-            f"marcas/{brand_id}/modelos"
-        )
-
-        models_response = requests.get(models_url)
-
-        models = models_response.json()["modelos"]
-
-        model_id = None
-
-        for item in models:
-
-            if model.lower() in item["nome"].lower():
-                model_id = item["codigo"]
-                break
-
-        if not model_id:
-            print("Modelo não encontrado na FIPE")
-            return 0
-
-        years_url = (
-            f"https://parallelum.com.br/fipe/api/v1/carros/"
-            f"marcas/{brand_id}/modelos/{model_id}/anos"
-        )
-
-        years_response = requests.get(years_url)
-
-        years = years_response.json()
-
-        year_code = None
-
-        for item in years:
-
-            if str(year) in item["nome"]:
-                year_code = item["codigo"]
-                break
-
-        if not year_code:
-            print("Ano não encontrado na FIPE")
-            return 0
-
-        price_url = (
-            f"https://parallelum.com.br/fipe/api/v1/carros/"
-            f"marcas/{brand_id}/modelos/{model_id}/anos/{year_code}"
-        )
-
-        price_response = requests.get(price_url)
-
-        price_data = price_response.json()
-
-        value = price_data["Valor"]
-
-        value = (
-            value
-            .replace("R$", "")
-            .replace(".", "")
-            .replace(",", ".")
-            .strip()
-        )
-
-        return float(value)
-
-    except Exception as e:
-
-        print("Erro ao buscar preço FIPE:", e)
-
-        return 0
+UNKNOWN_RESPONSE = {
+    "engine": "Unknown",
+    "horsepower": 0,
+    "torque": 0,
+    "drivetrain": "Unknown",
+    "price": 0
+}
 
 
 @app.post("/specs")
@@ -168,16 +64,17 @@ No code blocks.
 JSON format:
 {{
     "engine": "string (ex: 2.0 Turbo 16V)",
-    "horsepower": number,
-    "torque": number,
+    "horsepower": number (in HP),
+    "torque": number (in Nm),
     "drivetrain": "string (FWD, RWD, AWD or 4WD)",
-    "topSpeed": number,
-    "acceleration": number,
-    "length": number,
-    "width": number,
-    "height": number,
-    "weight": number,
-    "electricRange": number
+    "topSpeed": number (in km/h),
+    "acceleration": number (0-100 km/h in seconds),
+    "length": number (in meters),
+    "width": number (in meters),
+    "height": number (in meters),
+    "weight": number (in kg),
+    "electricRange": number (in km, use 0 if not electric),
+    "price": number (current FIPE price in BRL)
 }}
 
 If the vehicle does not exist or you are not certain, return exactly:
@@ -192,8 +89,14 @@ If the vehicle does not exist or you are not certain, return exactly:
     "width": 0,
     "height": 0,
     "weight": 0,
-    "electricRange": 0
+    "electricRange": 0,
+    "price": 0
 }}
+
+IMPORTANT:
+- The "price" field must be the current FIPE market price in Brazilian Real (BRL)
+- Use real FIPE market values when possible
+- Do NOT return USD values
 
 Vehicle:
 Brand: {request.brand}
@@ -217,26 +120,25 @@ Year: {request.year}
 
         if (
                 data.get("horsepower", 0) <= 0 or
-                data.get("torque", 0) <= 0
+                data.get("torque", 0) <= 0 or
+                data.get("price", 0) <= 0
         ):
             print("IA retornou dados inválidos")
+
             return UNKNOWN_RESPONSE
-
-        fipe_price = get_fipe_price(
-            request.brand,
-            request.model,
-            request.year
-        )
-
-        data["price"] = fipe_price
 
         return data
 
     except Exception as e:
-
         print("Erro na IA:", e)
 
         return UNKNOWN_RESPONSE
+
+
+class CompareSummaryRequest(BaseModel):
+    vehicleA: dict
+    vehicleB: dict
+    winner: str
 
 
 @app.post("/compare-summary")
@@ -286,7 +188,6 @@ Overall winner:
         return data
 
     except Exception as e:
-
         print("Erro ao gerar summary:", e)
 
         return {
