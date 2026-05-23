@@ -749,6 +749,18 @@ Proteção contra injeção de parâmetros inválidos no gerador de PDF.
 
 Desenvolvido como projeto acadêmico para o **Projeto FORD** — Engenharia de Software.
 
+Bruno Otavio Silva De Oliveira RM556196
+
+Guilherme Flores Pereira de Almeida RM554948
+
+Luiz Fernando de Aragão Souza RM555561
+
+Bruno Otavio Silva De Oliveira RM556196
+
+Marcello de Freitas Moreira RM557531
+
+Leonardo Gonçalves Novaes RM554807
+
 ---
 
 *AutoSpec Intelligence Backend — Java 17 + Spring Boot 3.4.1 + AWS EC2*
