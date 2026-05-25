@@ -18,6 +18,7 @@ public class CorsConfig {
                 "http://localhost:3000",
                 "http://localhost:5173",
                 "http://localhost:8081",
+                "https://autospec-mobile.vercel.app",   
                 System.getenv("FRONTEND_URL") != null
                         ? System.getenv("FRONTEND_URL") : ""
         ));

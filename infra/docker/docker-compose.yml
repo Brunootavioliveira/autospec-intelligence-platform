@@ -22,6 +22,11 @@ services:
   ai-service:
     build: ../../ai-service
     container_name: autospec-ai
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 512M
     ports:
       - "5000:5000"
     env_file:
@@ -32,10 +37,9 @@ services:
   nginx:
     image: nginx:latest
     container_name: autospec-nginx
-
+    restart: always
     ports:
       - "8443:443"
-      - "8088:80"
 
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf
@@ -47,13 +51,25 @@ services:
   backend:
     build: ../../backend/autospec-api
     container_name: autospec-backend
+    restart: always
     depends_on:
       - postgres
       - ai-service
       - redis
     env_file:
       - .env
+
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
     environment:
+      JAVA_OPTS: "-Xmx384m -Xms256m"
       DB_CRYPTO_KEY: ${DB_CRYPTO_KEY}
       SPRING_PROFILES_ACTIVE: prod
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
