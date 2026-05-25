@@ -2,7 +2,7 @@
 
 > API RESTful de inteligência competitiva automotiva desenvolvida em **Java 17 + Spring Boot 3.4.1**, com segurança enterprise, cache distribuído, geração de specs via IA e exportação em PDF.
 
-🌐 **API em produção:** `https://18.216.83.72:8443`  
+🌐 **API em produção:** `https://autospec.duckdns.org:8443`  
 📖 **Swagger UI:** [https://18.216.83.72:8443/swagger-ui/index.html](https://18.216.83.72:8443/swagger-ui/index.html)  
 🖥️ **Frontend:** [autospec-mobile.vercel.app](https://autospec-mobile.vercel.app)  
 📦 **Repositório:** [github.com/Brunootavioliveira/autospec-intelligence-platform](https://github.com/Brunootavioliveira/autospec-intelligence-platform)  
