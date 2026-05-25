@@ -48,16 +48,16 @@ O backend do AutoSpec Intelligence expõe uma API RESTful que orquestra:
 
 ```
                     ┌─────────────────────────────────────┐
-                    │           AWS EC2 (Docker)           │
-                    │                                      │
+                    │           AWS EC2 (Docker)          │
+                    │                                     │
   HTTPS ─────────▶  │  ┌─────────┐                        │
   :8443             │  │  Nginx  │ TLS 1.2/1.3            │
-                    │  │ Reverse │ HTTP→HTTPS redirect     │
+                    │  │ Reverse │ HTTP→HTTPS redirect    │
                     │  │  Proxy  │                        │
                     │  └────┬────┘                        │
-                    │       │ :8080 (interno)              │
+                    │       │ :8080 (interno)             │
                     │  ┌────▼──────────────────────────┐  │
-                    │  │     Spring Boot Backend        │  │
+                    │  │     Spring Boot Backend       │  │
                     │  │                               │  │
                     │  │  ┌──────────────────────────┐ │  │
                     │  │  │  Filter Chain            │ │  │
@@ -70,16 +70,16 @@ O backend do AutoSpec Intelligence expõe uma API RESTful que orquestra:
                     │  │  MapStruct → DTOs             │  │
                     │  │  JPA Auditing                 │  │
                     │  └──┬──────────────┬─────────────┘  │
-                    │     │              │                 │
+                    │     │              │                │
                     │  ┌──▼──┐      ┌───▼───┐             │
                     │  │Redis│      │  PG   │             │
                     │  │Cache│      │  :5432│             │
                     │  └─────┘      └───────┘             │
-                    │                    │                 │
+                    │                    │                │
                     │  ┌─────────────────▼───────────┐    │
-                    │  │  AI Service (FastAPI/Python) │    │
-                    │  │  Gemini API integration      │    │
-                    │  │  :5000 (interno)             │    │
+                    │  │  AI Service (FastAPI/Python)│    │
+                    │  │  Gemini API integration     │    │
+                    │  │  :5000 (interno)            │    │
                     │  └─────────────────────────────┘    │
                     └─────────────────────────────────────┘
 ```
