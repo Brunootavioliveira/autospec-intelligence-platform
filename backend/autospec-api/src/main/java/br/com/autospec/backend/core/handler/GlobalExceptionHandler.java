@@ -115,8 +115,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponseDTO> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
-
-        return ResponseEntity.badRequest().body(new ErrorResponseDTO(
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(new ErrorResponseDTO(
                 LocalDateTime.now(),
                 HttpStatus.METHOD_NOT_ALLOWED.value(),
                 "Método HTTP não suportado."

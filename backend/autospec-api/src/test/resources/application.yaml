@@ -1,0 +1,7 @@
+app:
+  security:
+    hmac-secret: test-secret-key-for-unit-tests
+
+jwt:
+  secret: test-secret-key-for-unit-tests-must-be-at-least-32-bytes-long
+  expiration: 3600000
