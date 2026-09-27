@@ -58,3 +58,10 @@ app:
     specs-months: 6
     history-months: 12
     sessions-days: 30
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, prometheus, metrics
