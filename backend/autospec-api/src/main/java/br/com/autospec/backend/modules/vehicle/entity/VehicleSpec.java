@@ -8,8 +8,7 @@ import java.math.BigDecimal;
 
 @Entity
 @Table(name = "vehicle_specs", uniqueConstraints = {
-        @UniqueConstraint(columnNames =
-                {"brand", "model", "version", "year"})})
+        @UniqueConstraint(columnNames = {"brand", "model", "version", "vehicle_year"})})
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter
@@ -30,7 +29,7 @@ public class VehicleSpec extends Auditable {
     @Column(length = 100)
     private String version;
 
-    @Column(length = 100)
+    @Column(name = "vehicle_year")
     private Integer year;
 
     private String engine;

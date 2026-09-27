@@ -1,5 +1,6 @@
 package br.com.autospec.backend.modules.auth.controller;
 
+import br.com.autospec.backend.config.SecurityMocksConfig;
 import br.com.autospec.backend.modules.auth.dto.AuthResponseDTO;
 import br.com.autospec.backend.modules.auth.dto.LoginRequestDTO;
 import br.com.autospec.backend.modules.auth.dto.RegisterRequestDTO;
@@ -19,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(AuthController.class)
-@Import(br.com.autospec.backend.config.SecurityMocksConfig.class)
+@Import(SecurityMocksConfig.class)
 class AuthControllerTest {
 
     @Autowired
@@ -60,7 +61,6 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.role").value("VIEWER"));
     }
 
-
     @Test
     void login_comEmailInvalido_deveRetornar400() throws Exception {
         LoginRequestDTO request = new LoginRequestDTO("email-invalido", "senha123");
@@ -80,7 +80,6 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest());
     }
-
 
     @Test
     void login_comCredenciaisErradas_deveRetornar401() throws Exception {

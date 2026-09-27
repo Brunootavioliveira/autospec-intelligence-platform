@@ -1,5 +1,6 @@
 package br.com.autospec.backend.modules.vehicle.controller;
 
+import br.com.autospec.backend.config.SecurityMocksConfig;
 import br.com.autospec.backend.modules.vehicle.dto.VehicleRequestDTO;
 import br.com.autospec.backend.modules.vehicle.dto.VehicleResponseDTO;
 import br.com.autospec.backend.modules.vehicle.service.VehicleComparisonService;
@@ -19,7 +20,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(VehicleController.class)
-@Import(br.com.autospec.backend.config.SecurityMocksConfig.class)
+@Import(SecurityMocksConfig.class)
 class VehicleControllerTest {
 
     @Autowired
@@ -37,15 +38,13 @@ class VehicleControllerTest {
     private final VehicleRequestDTO validRequest =
             new VehicleRequestDTO("Ford", "Ranger", "Raptor", 2026);
 
-
     @Test
-    void generateSpec_semAutenticacao_deveRetornar401() throws Exception {
+    void generateSpec_semAutenticacao_deveRetornar403() throws Exception {
         mockMvc.perform(post("/api/v1/vehicles/spec")
                         .contentType("application/json")
                         .content(objectMapper.writeValueAsString(validRequest)))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
-
 
     @Test
     @WithMockUser(roles = "VIEWER")
@@ -55,7 +54,6 @@ class VehicleControllerTest {
                         .content(objectMapper.writeValueAsString(validRequest)))
                 .andExpect(status().isForbidden());
     }
-
 
     @Test
     @WithMockUser(roles = "ANALYST")
