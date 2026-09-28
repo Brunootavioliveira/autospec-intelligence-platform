@@ -8,7 +8,7 @@
 | Recurso | Link |
 |---|---|
 | 🌐 API em produção | `https://autospec.duckdns.org:8443` |
-| 📖 Swagger UI | https://autospec.duckdns.org:8443/swagger-ui/index.html |
+| 📖 Swagger UI | https://3.21.129.75:8443/swagger-ui/index.html |
 | 🖥️ Frontend (Web/PWA) | https://autospec-mobile.vercel.app |
 | 📦 Repositório | https://github.com/Brunootavioliveira/autospec-intelligence-platform |
 | ☁️ Infraestrutura | AWS EC2 t3.micro (Ubuntu) + Docker Compose |
@@ -20,7 +20,7 @@
 A API em produção usa um **certificado TLS autoassinado** (projeto acadêmico, sem CA paga). Por isso, o navegador bloqueia as chamadas do frontend para a API até que o certificado seja aceito manualmente **uma vez**. Siga esta ordem:
 
 1. **Abra o Swagger primeiro:**
-   👉 https://autospec.duckdns.org:8443/swagger-ui/index.html
+   👉 https://3.21.129.75:8443/swagger-ui/index.html
 2. O navegador vai exibir um aviso de **"Sua conexão não é particular"** / **"Risco potencial de segurança"**.
 3. Clique em **Avançado** → **Ir para autospec.duckdns.org (não seguro)** (no Firefox: *Avançado → Aceitar o risco e continuar*).
 4. Confirme que a página do **Swagger UI carregou**. A partir daqui o navegador confia no certificado para esse host.
