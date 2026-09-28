@@ -1,23 +1,63 @@
 # AutoSpec Intelligence — Backend
 
-> API RESTful de inteligência competitiva automotiva desenvolvida em **Java 17 + Spring Boot 3.4.1**, com segurança enterprise, cache distribuído, geração de specs via IA e exportação em PDF.
+> API RESTful de inteligência competitiva automotiva desenvolvida em **Java 17 + Spring Boot 3.4.1**, com autenticação JWT, RBAC, cache distribuído, geração de specs via IA e exportação em PDF.
 
-🌐 **API em produção:** `https://autospec.duckdns.org:8443`  
-📖 **Swagger UI:** [https://3.21.129.75:8443/swagger-ui/index.html](https://3.21.129.75:8443/swagger-ui/index.html)  
-🖥️ **Frontend:** [autospec-mobile.vercel.app](https://autospec-mobile.vercel.app)  
-📦 **Repositório:** [github.com/Brunootavioliveira/autospec-intelligence-platform](https://github.com/Brunootavioliveira/autospec-intelligence-platform)  
-☁️ **Infraestrutura:** AWS EC2 t3.micro (Ubuntu 26.04) + Docker Compose
+**Projeto Ford Challenge FIAP 2026 — Desafio 01: Inteligência Competitiva Automotiva**
+**Disciplina:** Arquitetura Orientada a Serviços e Web Services — **Sprint 3**
+
+| Recurso | Link |
+|---|---|
+| 🌐 API em produção | `https://autospec.duckdns.org:8443` |
+| 📖 Swagger UI | https://autospec.duckdns.org:8443/swagger-ui/index.html |
+| 🖥️ Frontend (Web/PWA) | https://autospec-mobile.vercel.app |
+| 📦 Repositório | https://github.com/Brunootavioliveira/autospec-intelligence-platform |
+| ☁️ Infraestrutura | AWS EC2 t3.micro (Ubuntu) + Docker Compose |
+
+---
+
+## Como acessar a solução (LEIA PRIMEIRO)
+
+A API em produção usa um **certificado TLS autoassinado** (projeto acadêmico, sem CA paga). Por isso, o navegador bloqueia as chamadas do frontend para a API até que o certificado seja aceito manualmente **uma vez**. Siga esta ordem:
+
+1. **Abra o Swagger primeiro:**
+   👉 https://autospec.duckdns.org:8443/swagger-ui/index.html
+2. O navegador vai exibir um aviso de **"Sua conexão não é particular"** / **"Risco potencial de segurança"**.
+3. Clique em **Avançado** → **Ir para autospec.duckdns.org (não seguro)** (no Firefox: *Avançado → Aceitar o risco e continuar*).
+4. Confirme que a página do **Swagger UI carregou**. A partir daqui o navegador confia no certificado para esse host.
+5. **Só então abra o frontend:**
+   👉 https://autospec-mobile.vercel.app
+6. Crie uma conta (ou faça login) e use o sistema normalmente.
+
+> Se o frontend exibir erro de rede / "Failed to fetch" / não carregar dados, volte ao passo 1: o certificado ainda não foi aceito nesse navegador (ou a exceção expirou).
+> No **APK Android**, se as chamadas falharem, abra antes o link do Swagger no navegador do próprio celular e aceite o risco.
+
+### Usuários / perfis para teste
+
+| Perfil | Como obter | Permissões |
+|---|---|---|
+| `VIEWER` | Criado automaticamente em `POST /api/v1/auth/register` | Somente leitura |
+| `ANALYST` | Promovido por um ADMIN (`PATCH /api/v1/users/{id}/role`) | VIEWER + gerar spec com IA + relatórios |
+| `ADMIN` | Promovido por outro ADMIN / definido direto no banco | ANALYST + deletar specs + gerir usuários |
+
+> 📝 **Credenciais de teste (admin) para o professor:** 
+*Email: testee@gmail.com*
+*Senha: 12345678*
 
 ---
 
 ## Índice
 
 - [Visão Geral](#visão-geral)
-- [Arquitetura](#arquitetura)
+- [1. Arquitetura da Solução](#1-arquitetura-da-solução)
+- [2. Autenticação e Autorização](#2-autenticação-e-autorização)
+- [3. JWT](#3-jwt)
+- [4. Maturidade REST — Nível 2](#4-maturidade-rest--nível-2)
+- [5. Testes Automatizados](#5-testes-automatizados)
+- [6. Documentação e Tratamento de Erros](#6-documentação-e-tratamento-de-erros)
 - [Stack Tecnológica](#stack-tecnológica)
 - [Estrutura de Pacotes](#estrutura-de-pacotes)
 - [Módulos](#módulos)
-- [Segurança](#segurança)
+- [Segurança adicional](#segurança-adicional)
 - [Cache e Performance](#cache-e-performance)
 - [Banco de Dados](#banco-de-dados)
 - [Infraestrutura Docker](#infraestrutura-docker)
@@ -25,72 +65,325 @@
 - [Como Rodar Localmente](#como-rodar-localmente)
 - [Deploy na AWS EC2](#deploy-na-aws-ec2)
 - [Endpoints da API](#endpoints-da-api)
-- [Papéis e Permissões (RBAC)](#papéis-e-permissões-rbac)
-- [Padrões e Decisões Técnicas](#padrões-e-decisões-técnicas)
+- [Decisões Técnicas](#decisões-técnicas)
+- [Autores](#autores)
 
 ---
 
 ## Visão Geral
 
-O backend do AutoSpec Intelligence expõe uma API RESTful que orquestra:
+O backend do AutoSpec Intelligence resolve o **Desafio 01 da Ford**: receber **marca, modelo, versão (e ano)** de um veículo concorrente e devolver uma **lista padronizada de especificações técnicas**, sempre no mesmo formato, com campos ausentes explicitados.
 
-- **Geração de specs via IA** — delega para um microserviço Python/FastAPI que usa o modelo Gemini para extrair especificações técnicas de qualquer veículo (marca, modelo, versão, ano)
-- **Cache inteligente** — Redis evita chamadas desnecessárias à IA para veículos já consultados
-- **Comparação técnica** — score automático por atributo com vencedor calculado matematicamente
-- **Análise avançada** — power-to-weight ratio, Track Handling Score e percentis populacionais
-- **Relatórios em PDF** — Comparison Report e Vehicle Dossier gerados com OpenPDF
-- **Garage pessoal** — frota do analista com insights automáticos e soft delete
-- **Auditoria completa** — rastreamento de todas as ações críticas com usuário e timestamp
+Ele orquestra:
+
+- **Geração de specs via IA** — delega a um microserviço Python/FastAPI que usa o modelo Gemini
+- **Cache inteligente** — Redis evita chamadas repetidas à IA
+- **Comparação técnica** — score por atributo com vencedor calculado
+- **Análise avançada** — power-to-weight, Track Handling Score e percentis
+- **Relatórios em PDF** — Comparison Report e Vehicle Dossier
+- **Garage pessoal** — frota do analista com insights e soft delete
+- **Auditoria** — rastreamento de ações críticas (usuário + timestamp)
 
 ---
 
-## Arquitetura
+## 1. Arquitetura da Solução
 
-```
-                    ┌─────────────────────────────────────┐
-                    │           AWS EC2 (Docker)          │
-                    │                                     │
-  HTTPS ─────────▶  │  ┌─────────┐                        │
-  :8443             │  │  Nginx  │ TLS 1.2/1.3            │
-                    │  │ Reverse │ HTTP→HTTPS redirect    │
-                    │  │  Proxy  │                        │
-                    │  └────┬────┘                        │
-                    │       │ :8080 (interno)             │
-                    │  ┌────▼──────────────────────────┐  │
-                    │  │     Spring Boot Backend       │  │
-                    │  │                               │  │
-                    │  │  ┌──────────────────────────┐ │  │
-                    │  │  │  Filter Chain            │ │  │
-                    │  │  │  HmacFilter              │ │  │
-                    │  │  │  RateLimitFilter         │ │  │
-                    │  │  │  JwtFilter               │ │  │
-                    │  │  └──────────────────────────┘ │  │
-                    │  │                               │  │
-                    │  │  Controllers → Services       │  │
-                    │  │  MapStruct → DTOs             │  │
-                    │  │  JPA Auditing                 │  │
-                    │  └──┬──────────────┬─────────────┘  │
-                    │     │              │                │
-                    │  ┌──▼──┐      ┌───▼───┐             │
-                    │  │Redis│      │  PG   │             │
-                    │  │Cache│      │  :5432│             │
-                    │  └─────┘      └───────┘             │
-                    │                    │                │
-                    │  ┌─────────────────▼───────────┐    │
-                    │  │  AI Service (FastAPI/Python)│    │
-                    │  │  Gemini API integration     │    │
-                    │  │  :5000 (interno)            │    │
-                    │  └─────────────────────────────┘    │
-                    └─────────────────────────────────────┘
+### 1.1 Diagrama de componentes
+
+```mermaid
+flowchart LR
+    subgraph Clientes
+        WEB[Frontend Web/PWA<br/>Vercel]
+        APK[App Android<br/>Capacitor APK]
+    end
+
+    subgraph EC2["AWS EC2 — Docker Compose (rede interna)"]
+        NGINX[Nginx<br/>TLS 1.2/1.3<br/>Reverse Proxy :8443]
+        subgraph BACK["Spring Boot Backend :8080"]
+            FC[Filter Chain<br/>HmacFilter → RateLimitFilter → JwtFilter]
+            SEC[SecurityConfig<br/>RBAC / STATELESS]
+            CTRL[Controllers REST]
+            SVC[Services<br/>regras de negócio]
+            REPO[Repositories JPA]
+        end
+        REDIS[(Redis 7<br/>cache TTL 1h)]
+        PG[(PostgreSQL 15<br/>Flyway)]
+        AI[AI Service<br/>FastAPI :5000]
+    end
+
+    GEMINI[[Gemini API]]
+
+    WEB -->|HTTPS| NGINX
+    APK -->|HTTPS| NGINX
+    NGINX --> FC --> SEC --> CTRL --> SVC --> REPO
+    SVC --> REDIS
+    REPO --> PG
+    SVC -->|WebClient| AI --> GEMINI
 ```
 
-### Fluxo de uma requisição autenticada
+### 1.2 Responsabilidades
+
+| Componente | Responsabilidade |
+|---|---|
+| **Nginx** | Terminação TLS, redirect HTTP→HTTPS, reverse proxy. Único ponto exposto — o backend **não publica porta** externamente |
+| **HmacFilter** | Assinatura HMAC-SHA256 + anti-replay (5 min) em endpoints críticos |
+| **RateLimitFilter** | Limitação de taxa (Bucket4j) por IP ou usuário |
+| **JwtFilter** | Extrai e valida o JWT, popula o `SecurityContext` |
+| **SecurityConfig** | Regras de acesso por rota e por perfil (RBAC), sessão STATELESS |
+| **Controllers** | Camada HTTP: validação de entrada, mapeamento de rotas e status codes |
+| **Services** | Regras de negócio, cache, orquestração com o AI Service |
+| **Repositories** | Acesso a dados (Spring Data JPA) |
+| **MapStruct** | Conversão Entity ↔ DTO em tempo de compilação |
+| **Redis** | Cache de specs já geradas |
+| **PostgreSQL** | Persistência; schema versionado via Flyway |
+| **AI Service** | Extração de specs técnicas via Gemini (microserviço separado) |
+| **GlobalExceptionHandler** | Padronização de todas as respostas de erro |
+
+### 1.3 Separação em camadas (por módulo de domínio)
+
+```
+Controller  →  Service  →  Repository  →  Banco
+    │             │
+    DTO (in/out)  Entity  (MapStruct entre elas)
+```
+
+Cada módulo (`auth`, `vehicle`, `garage`, ...) contém suas próprias camadas, mantendo alta coesão e baixo acoplamento.
+
+### 1.4 Fluxo de comunicação e autenticação
+
+```mermaid
+sequenceDiagram
+    autonumber
+    participant C as Cliente
+    participant N as Nginx (TLS)
+    participant F as Filter Chain
+    participant A as AuthController
+    participant R as Recurso protegido
+    participant DB as PostgreSQL
+
+    C->>N: POST /api/v1/auth/login (email, senha)
+    N->>F: RateLimitFilter (5 req/min por IP)
+    F->>A: login
+    A->>DB: valida credenciais (BCrypt)
+    A-->>C: 200 {accessToken (JWT), refreshToken}
+
+    C->>N: GET /api/v1/vehicles/spec/{id}<br/>Authorization: Bearer <JWT>
+    N->>F: JwtFilter valida assinatura + expiração
+    F->>R: SecurityConfig checa o perfil (RBAC)
+    R->>DB: consulta
+    R-->>C: 200 {spec}
+
+    Note over C,A: accessToken expirado
+    C->>N: POST /api/v1/auth/refresh<br/>X-Signature + X-Timestamp (HMAC)
+    N->>F: HmacFilter valida assinatura e janela de 5 min
+    F->>A: refresh
+    A->>DB: deleta refresh antigo, cria novo (rotação)
+    A-->>C: 200 {novo accessToken, novo refreshToken}
+```
+
+Resumo textual do fluxo de uma requisição autenticada:
 
 ```
 Cliente → Nginx (TLS) → HmacFilter → RateLimitFilter → JwtFilter
        → SecurityConfig (RBAC) → Controller → Service → Repository
        → PostgreSQL / Redis / AI Service
 ```
+
+---
+
+## 2. Autenticação e Autorização
+
+### 2.1 Endpoints públicos × protegidos
+
+| Tipo | Endpoints |
+|---|---|
+| **Públicos** | `POST /api/v1/auth/register`, `POST /api/v1/auth/login`, `POST /api/v1/auth/refresh` (exige HMAC), `POST /api/v1/auth/logout`, health check, Swagger UI / OpenAPI |
+| **Protegidos (qualquer perfil autenticado)** | Consulta/busca/comparação de specs, análise, garage, histórico, comparações salvas, perfil (`/users/me`) |
+| **Protegidos por perfil** | Geração de spec com IA e relatórios (ANALYST/ADMIN); deleção e gestão de usuários (ADMIN) |
+
+### 2.2 Perfis e permissões (RBAC)
+
+```java
+// SecurityConfig
+.requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
+.requestMatchers(HttpMethod.POST, "/api/v1/vehicles/**").hasAnyRole("ANALYST", "ADMIN")
+.anyRequest().authenticated()
+```
+
+| Ação | VIEWER | ANALYST | ADMIN |
+|---|:---:|:---:|:---:|
+| Consultar / buscar specs | ✅ | ✅ | ✅ |
+| Comparar e analisar | ✅ | ✅ | ✅ |
+| Gerar spec com IA | ❌ | ✅ | ✅ |
+| Gerar relatórios PDF | ❌ | ✅ | ✅ |
+| Deletar specs | ❌ | ❌ | ✅ |
+| Gerenciar usuários e roles | ❌ | ❌ | ✅ |
+
+- Novos usuários entram como `VIEWER`.
+- Um `ADMIN` promove usuários via `PATCH /api/v1/users/{id}/role`.
+- Sem token → `401`. Token válido sem permissão → `403`.
+
+### 2.3 Proteções complementares
+
+- **Senhas:** BCrypt
+- **Dados sensíveis em repouso:** `name` e `email` do usuário criptografados com **AES/GCM/NoPadding** (IV aleatório de 12 bytes por valor, tag de 128 bits)
+- **Rate limit (Bucket4j):**
+
+| Contexto | Chave | Limite |
+|---|---|---|
+| `POST /auth/login` | IP | 5 req/min |
+| `POST /auth/refresh` | IP | 10 req/min |
+| `/api/v1/vehicles/spec/**` | Usuário | 10 req/min |
+
+- **HMAC-SHA256 + anti-replay:** `POST /auth/refresh` exige `X-Signature` = `HMAC(normalizedBody + timestamp, secret)` e `X-Timestamp`, com janela de 5 minutos
+- **Sessões rastreadas:** `UserSession` guarda IP, browser, dispositivo e `lastActive`; o usuário pode revogar sessões
+
+---
+
+## 3. JWT
+
+| Item | Implementação |
+|---|---|
+| Biblioteca | `jjwt 0.12.6` |
+| Algoritmo | HMAC (chave secreta `JWT_SECRET`, mínimo 32 caracteres) |
+| Geração | No login e no refresh (`JwtService`) |
+| Validação | `JwtFilter` valida assinatura e expiração a cada requisição |
+| Transporte | Header `Authorization: Bearer <token>` |
+| Expiração do access token | `JWT_EXPIRATION` (padrão **24h**, em ms) |
+| Refresh token | UUID persistido no banco, validade de **7 dias** |
+| Rotação | A cada refresh o token antigo é deletado e um novo é emitido |
+| Logout | Invalida o refresh token no banco |
+| Proteção de recursos | O `JwtFilter` carrega o usuário e registra no `SecurityContextHolder`; o RBAC decide o acesso pelo papel do usuário |
+| Sessão | `STATELESS` — nenhum estado de sessão no servidor |
+
+Exemplo de uso:
+
+```bash
+# 1. Login
+curl -k -X POST https://autospec.duckdns.org:8443/api/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"seu@email.com","password":"suasenha"}'
+
+# 2. Chamar recurso protegido
+curl -k https://autospec.duckdns.org:8443/api/v1/vehicles/spec \
+  -H "Authorization: Bearer <accessToken>"
+```
+
+> `-k` é necessário apenas por causa do certificado autoassinado.
+
+No Swagger: clique em **Authorize**, cole o `accessToken` (esquema `bearerAuth`) e teste os endpoints protegidos.
+
+---
+
+## 4. Maturidade REST — Nível 2
+
+A API atende ao **Nível 2 do Modelo de Maturidade de Richardson**: recursos identificados por URI + uso correto dos verbos HTTP + status codes semânticos.
+
+### 4.1 Orientação a recursos
+
+Substantivos no plural, versionados em `/api/v1`, com hierarquia clara:
+
+```
+/api/v1/vehicles/spec          /api/v1/garage
+/api/v1/analysis/{vehicleId}   /api/v1/history
+/api/v1/comparisons/saved      /api/v1/reports
+/api/v1/users                  /api/v1/auth
+```
+
+### 4.2 Uso dos métodos HTTP
+
+| Método | Uso na API |
+|---|---|
+| `GET` | Leitura, listagem paginada, busca com filtros (idempotente, sem efeitos colaterais) |
+| `POST` | Criação de recurso / geração de spec / login / geração de relatório |
+| `PATCH` | Atualização parcial (perfil, nickname, fleet type, role) |
+| `DELETE` | Remoção (hard delete de spec, soft delete em garage/histórico) |
+
+### 4.3 Status codes
+
+| Código | Quando |
+|---|---|
+| `200 OK` | Consulta/atualização com sucesso |
+| `201 Created` | Recurso criado |
+| `204 No Content` | Remoção com sucesso, sem corpo |
+| `400 Bad Request` | Validação, JSON malformado, regra de negócio violada |
+| `401 Unauthorized` | Sem token, token inválido/expirado ou credenciais incorretas |
+| `403 Forbidden` | Autenticado, mas sem permissão para o recurso |
+| `404 Not Found` | Recurso inexistente |
+| `429 Too Many Requests` | Rate limit excedido |
+| `500 Internal Server Error` | Falha inesperada (sem vazar detalhes internos) |
+
+---
+
+## 5. Testes Automatizados
+
+### Como executar
+
+```bash
+cd backend
+mvn test
+# ou, com o wrapper:
+./mvnw test
+```
+
+### Cenários cobertos
+
+| Categoria | Cenário | Resultado esperado |
+|---|---|---|
+| ✅ Sucesso | Registro de usuário | `201` + tokens |
+| ✅ Sucesso | Login com credenciais válidas | `200` + `accessToken` + `refreshToken` |
+| ✅ Sucesso | `GET` de spec autenticado | `200` + spec |
+| ✅ Sucesso | ANALYST gera spec | `200/201` |
+| ❌ Erro | Login com senha incorreta | `401` |
+| ❌ Erro | Corpo inválido / campo obrigatório ausente | `400` |
+| ❌ Erro | Spec inexistente | `404` |
+| 🔒 Não autorizado | Recurso protegido sem token | `401` |
+| 🔒 Não autorizado | Token expirado/adulterado | `401` |
+| 🔒 Não autorizado | VIEWER tenta gerar spec / ANALYST tenta deletar | `403` |
+| 🔒 Não autorizado | Excesso de tentativas de login | `429` |
+
+> 📝 **Ajustar esta tabela** para refletir exatamente as classes de teste existentes no projeto (`src/test/java/...`).
+
+### Evidência de execução
+
+> 📝 **Inserir aqui:** print do terminal com `mvn test` mostrando `Tests run: X, Failures: 0, Errors: 0` e/ou o relatório em `target/surefire-reports/`.
+
+```
+[INFO] Tests run: X, Failures: 0, Errors: 0, Skipped: 0
+[INFO] BUILD SUCCESS
+```
+
+---
+
+## 6. Documentação e Tratamento de Erros
+
+### 6.1 Documentação da API (OpenAPI / Swagger)
+
+- **springdoc-openapi 2.8.6**
+- Swagger UI: https://autospec.duckdns.org:8443/swagger-ui/index.html
+- Contrato OpenAPI (JSON): `https://autospec.duckdns.org:8443/v3/api-docs`
+- Esquema de segurança `bearerAuth` configurado (botão **Authorize**)
+
+### 6.2 Padronização das respostas de erro
+
+Todo erro é tratado pelo `GlobalExceptionHandler` (`@RestControllerAdvice`) e devolvido no mesmo formato (`ErrorResponseDTO`), sem vazar stack trace ou detalhes internos:
+
+| Exceção | HTTP | Mensagem ao cliente |
+|---|---|---|
+| `ResourceNotFoundException` | 404 | Mensagem do domínio |
+| `BusinessException` | 400 | Mensagem do domínio |
+| `MethodArgumentNotValidException` | 400 | `campo: mensagem` por campo |
+| `IllegalArgumentException` | 400 | Mensagem do domínio |
+| `HttpMessageNotReadableException` | 400 | "JSON malformado" |
+| `AuthenticationException` | 401 | "Invalid email or password" |
+| `AccessDeniedException` | 403 | "Acesso negado" |
+| Rate limit excedido | 429 | JSON padronizado |
+| `CryptoException` | 500 | "Erro interno de processamento" |
+| `Exception` (genérica) | 500 | "Erro interno." |
+
+### 6.3 README
+
+Este documento contém as instruções de acesso e de execução (seções [Como acessar](#️-como-acessar-a-solução-leia-primeiro), [Como Rodar Localmente](#como-rodar-localmente) e [Deploy na AWS EC2](#deploy-na-aws-ec2)).
 
 ---
 
@@ -114,7 +407,7 @@ Cliente → Nginx (TLS) → HmacFilter → RateLimitFilter → JwtFilter
 | Boilerplate | Lombok | — |
 | Build | Maven | 3.x |
 | Runtime | Docker + Nginx | — |
-| Cloud | AWS EC2 t3.micro | Ubuntu 26.04 |
+| Cloud | AWS EC2 t3.micro | Ubuntu |
 
 ---
 
@@ -123,215 +416,61 @@ Cliente → Nginx (TLS) → HmacFilter → RateLimitFilter → JwtFilter
 ```
 br.com.autospec.backend
 │
-├── BackendApplication.java           (@SpringBootApplication + @EnableCaching
-│                                      + @EnableJpaAuditing + @EnableScheduling)
+├── BackendApplication.java           (@EnableCaching + @EnableJpaAuditing + @EnableScheduling)
 │
 ├── config/
-│   ├── AppConfig.java                (WebClient Bean com timeout de 10s)
-│   ├── AuditorAwareImpl.java         (popula createdBy/modifiedBy via SecurityContext)
+│   ├── AppConfig.java                (WebClient com timeout de 10s)
+│   ├── AuditorAwareImpl.java         (createdBy/modifiedBy via SecurityContext)
 │   ├── CorsConfig.java               (origens permitidas, sem wildcard)
-│   └── OpenApiConfig.java            (Swagger bearerAuth scheme)
+│   └── OpenApiConfig.java            (Swagger bearerAuth)
 │
 ├── core/
-│   ├── common/
-│   │   ├── Auditable.java            (@MappedSuperclass com 4 campos de auditoria)
-│   │   ├── DataRetentionJob.java     (@Scheduled semanal — limpa specs antigas)
-│   │   └── ErrorResponseDTO.java     (resposta padronizada de erro)
-│   ├── exception/
-│   │   ├── BusinessException.java    (400 — regra de negócio violada)
-│   │   ├── CryptoException.java      (500 — falha de criptografia)
-│   │   └── ResourceNotFoundException (404 — recurso não encontrado)
-│   ├── handler/
-│   │   └── GlobalExceptionHandler   (@RestControllerAdvice — 7 handlers)
-│   ├── hmac/
-│   │   ├── HmacFilter.java          (valida X-Signature + anti-replay 5min)
-│   │   └── HmacUtil.java            (geração HMAC-SHA256)
-│   ├── http/
-│   │   └── CachedBodyRequestWrapper (permite reler o body do request)
-│   └── security/
-│       ├── AuthConfig.java           (DaoAuthenticationProvider + AuthManager)
-│       ├── CryptoConverter.java      (AES/GCM/NoPadding + IV aleatório)
-│       ├── PasswordConfig.java       (BCryptPasswordEncoder bean)
-│       └── SecurityConfig.java       (FilterChain + RBAC + STATELESS)
+│   ├── common/                       (Auditable, DataRetentionJob, ErrorResponseDTO)
+│   ├── exception/                    (BusinessException, CryptoException, ResourceNotFoundException)
+│   ├── handler/                      (GlobalExceptionHandler)
+│   ├── hmac/                         (HmacFilter, HmacUtil)
+│   ├── http/                         (CachedBodyRequestWrapper)
+│   └── security/                     (AuthConfig, CryptoConverter, PasswordConfig, SecurityConfig)
 │
 ├── infrastructure/
 │   └── HealthCheckController.java
 │
 └── modules/
-    ├── analysis/                     (VehicleAnalysisService — métricas derivadas)
-    ├── auth/                         (JWT, refresh token, rate limit, sessões)
-    ├── comparison/                   (comparações salvas pelo usuário)
-    ├── garage/                       (frota pessoal/profissional)
-    ├── history/                      (auditoria de ações do usuário)
-    ├── report/                       (geração de PDFs)
-    ├── user/                         (perfil, senha, sessões, admin)
-    └── vehicle/                      (CRUD + geração via IA + comparação técnica)
+    ├── analysis/     ├── auth/        ├── comparison/   ├── garage/
+    ├── history/      ├── report/      ├── user/         └── vehicle/
 ```
 
 ---
 
 ## Módulos
 
-### Auth
-Gerencia todo o ciclo de autenticação:
-
-- **Registro** → cria usuário com `Role.VIEWER` por padrão, retorna `accessToken` + `refreshToken`
-- **Login** → valida credenciais via `AuthenticationManager`, gera novo par de tokens
-- **Refresh** → valida o refresh token, faz rotação (token antigo é deletado, novo é criado), retorna novo par
-- **Logout** → invalida o refresh token no banco — acesso com o access token expirado é automaticamente rejeitado
-
-**Entidades:** `User`, `RefreshToken`, `UserSession`
-
-**Segurança extra:**
-- Refresh token com expiração de 7 dias
-- Rotação automática a cada refresh
-- `UserSession` rastreia IP, browser, dispositivo e `lastActive`
-
-### Vehicle
-Core do sistema:
-
-- **Geração via IA** — verifica cache Redis → verifica banco → chama AI Service → persiste → cacheia
-- **Busca textual** com filtros opcionais: brand, minYear, maxYear, minHp, maxHp
-- **Comparação por ID** — score automático por atributo com vencedor
-- **Comparação por spec** — dois objetos `VehicleRequestDTO` comparados diretamente
-
-**Entidade `VehicleSpec`:** brand, model, version, year, engine, horsepower, torque, drivetrain, topSpeed, acceleration, length, width, height, weight, electricRange, price + campos de auditoria herdados de `Auditable`
-
-### Analysis
-Calcula métricas derivadas para um veículo:
-
-- **Power-to-Weight Ratio** (kg/kW)
-- **Track Handling Score** (combinação de PTW e aceleração)
-- **Percentis populacionais** — onde o veículo está em relação a todos os outros no banco (HP, top speed, aceleração)
-
-### Garage
-Frota pessoal/profissional do analista:
-
-- Tipos de frota: `PERSONAL` e `WORK`
-- Apelido (`nickname`) customizável por veículo
-- Insights automáticos: total de veículos, veículo mais potente
-- **Soft delete** — veículo removido fica com `active = false`, preservando o histórico
-- Registro automático em `UserHistory` ao adicionar veículo
-
-### History
-Auditoria de ações do usuário:
-
-- Tipos: `ANALYSIS`, `COMPARISON`, `SERVICE_RECORD`
-- Filtro por tipo via query param
-- Soft delete individual ou limpeza total
-- Paginação configurável
-
-### Comparison
-Comparações salvas pelo usuário com título customizado. Vinculadas ao usuário via `@AuthenticationPrincipal`.
-
-### Report
-Geração de PDFs com OpenPDF:
-
-- **Comparison Report** — comparação completa entre dois veículos com parâmetros selecionáveis (`ENGINE`, `PERFORMANCE`, `PRICE`, `SAFETY`, `DIMENSIONS`)
-- **Vehicle Dossier** — dossiê completo de um veículo
-- PDFs armazenados em `ConcurrentHashMap` em memória; expiram após o primeiro download
-- Whitelist de parâmetros com validação explícita
-
-### User
-Perfil e gerenciamento de segurança:
-
-- Atualização de nome e senha
-- Listagem de sessões ativas com IP, browser e device
-- Revogação de sessão individual ou de todas as outras
-- **Admin:** listagem de todos os usuários e alteração de roles em tempo real
+| Módulo | Função |
+|---|---|
+| **Auth** | Registro (role `VIEWER`), login, refresh com rotação, logout. Entidades: `User`, `RefreshToken`, `UserSession` |
+| **Vehicle** | Geração de spec via IA (Redis → PostgreSQL → AI Service), busca com filtros (brand, minYear, maxYear, minHp, maxHp), comparação por ID ou por spec |
+| **Analysis** | Power-to-Weight (kg/kW), Track Handling Score e percentis populacionais |
+| **Garage** | Frota `PERSONAL`/`WORK`, nickname, insights, soft delete |
+| **History** | Auditoria de ações (`ANALYSIS`, `COMPARISON`, `SERVICE_RECORD`), filtro por tipo, paginação, soft delete |
+| **Comparison** | Comparações salvas com título customizado |
+| **Report** | PDFs (Comparison Report / Vehicle Dossier), whitelist de parâmetros, expiram após 1º download |
+| **User** | Perfil, senha, sessões ativas e revogação, gestão de roles (ADMIN) |
 
 ---
 
-## Segurança
+## Segurança adicional
 
-### Filter Chain
-
-```
-Request → HmacFilter → RateLimitFilter → JwtFilter → Controller
-```
-
-#### HmacFilter
-Protege endpoints críticos com assinatura HMAC-SHA256:
-
-```java
-// Endpoints protegidos
-POST /api/v1/auth/refresh
-
-// Headers obrigatórios
-X-Signature: HMAC-SHA256(normalizedBody + timestamp, secret)
-X-Timestamp: System.currentTimeMillis()
-```
-
-Proteção anti-replay: rejeita requisições com timestamp fora de uma janela de **5 minutos**.
-
-#### RateLimitFilter (Bucket4j)
-
-| Contexto | Chave | Limite |
-|---|---|---|
-| `POST /auth/login` | IP do cliente | 5 req/min |
-| `POST /auth/refresh` | IP do cliente | 10 req/min |
-| `/api/v1/vehicles/spec/**` | Username autenticado | 10 req/min |
-
-Retorna `429 Too Many Requests` com JSON padronizado ao ultrapassar o limite.
-
-#### JwtFilter
-- Extrai o token do header `Authorization: Bearer <token>`
-- Valida assinatura e expiração via `JwtService`
-- Carrega o usuário do banco e registra no `SecurityContextHolder`
-
-### RBAC
-
-```java
-// SecurityConfig
-.requestMatchers(HttpMethod.DELETE, "/api/v1/**").hasRole("ADMIN")
-.requestMatchers(HttpMethod.POST, "/api/v1/vehicles/**").hasAnyRole("ANALYST", "ADMIN")
-.anyRequest().authenticated()
-```
-
-| Ação | VIEWER | ANALYST | ADMIN |
-|---|:---:|:---:|:---:|
-| Consultar / buscar specs | ✅ | ✅ | ✅ |
-| Comparar e analisar | ✅ | ✅ | ✅ |
-| Gerar spec com IA | ❌ | ✅ | ✅ |
-| Gerar relatórios PDF | ❌ | ✅ | ✅ |
-| Deletar specs | ❌ | ❌ | ✅ |
-| Gerenciar usuários | ❌ | ❌ | ✅ |
-
-### Criptografia em Repouso
-Campos sensíveis do `User` (name, email) são criptografados com **AES/GCM/NoPadding**:
-
-```java
-// CryptoConverter.java
-private static final String ALGORITHM  = "AES/GCM/NoPadding";
-private static final int    IV_SIZE    = 12;   // bytes
-private static final int    TAG_LENGTH = 128;  // bits GCM tag
-
-// IV aleatório gerado por SecureRandom para cada valor
-// IV é prefixado no Base64 armazenado: [IV (12 bytes)] + [ciphertext]
-```
-
-### GlobalExceptionHandler
-7 handlers que garantem que nenhuma informação interna vaze para o cliente:
-
-| Exceção | HTTP | Mensagem ao cliente |
-|---|---|---|
-| `ResourceNotFoundException` | 404 | Mensagem do domínio |
-| `BusinessException` | 400 | Mensagem do domínio |
-| `MethodArgumentNotValidException` | 400 | `campo:mensagem` por campo |
-| `IllegalArgumentException` | 400 | Mensagem do domínio |
-| `AccessDeniedException` | 403 | "Acesso negado" |
-| `AuthenticationException` | 401 | "Invalid email or password" |
-| `HttpMessageNotReadableException` | 400 | "JSON malformado" |
-| `CryptoException` | 500 | "Erro interno de processamento" |
-| `Exception` | 500 | "Erro interno." (sem detalhes) |
+- **Criptografia em repouso** (AES-256-GCM) em campos sensíveis
+- **CORS** restrito à origem do frontend (`FRONTEND_URL`), sem wildcard
+- **TLS 1.2/1.3** apenas, com redirect HTTP→HTTPS
+- **Backend sem porta exposta** — acessível só pela rede interna Docker via Nginx
+- **Whitelist** de parâmetros no gerador de relatórios
+- **Retenção de dados** (`DataRetentionJob`, todo domingo 00:00): remove specs com mais de 6 meses
 
 ---
 
 ## Cache e Performance
 
-### Estratégia Redis
 ```java
-// VehicleService.java
 @Cacheable(value = "vehicle-specs-by-key",
     key = "#request.brand() + '-' + #request.model() + '-' + #request.version() + '-' + #request.year()")
 public VehicleResponseDTO generateVehicleSpec(VehicleRequestDTO request) { ... }
@@ -343,84 +482,38 @@ public VehicleResponseDTO findById(Long id) { ... }
 public void delete(Long id) { ... }
 ```
 
-**TTL configurado:** 1 hora (3.600.000 ms)
-
-### Fluxo de geração com cache
+TTL: **1 hora**. Fluxo de geração:
 
 ```
 POST /vehicles/spec
-  ├─▶ Redis (vehicle-specs-by-key)? → retorna imediatamente
-  ├─▶ PostgreSQL (findByBrandAndModelAndVersionAndYear)? → salva no Redis + retorna
-  └─▶ AI Service → salva no PG → salva no Redis → retorna
-```
-
-### Retenção de Dados
-`DataRetentionJob` executa todo domingo à meia-noite:
-
-```java
-@Scheduled(cron = "0 0 0 * * SUN")
-@Transactional
-public void runDataCleanup() {
-    // Deleta specs com mais de retentionMonths (padrão: 6)
-    int deleted = vehicleSpecRepository.deleteSpecsOlderThan(cutoffDate);
-    log.info("Total de especificações removidas: {}", deleted);
-}
+  ├─▶ Redis?      → retorna imediatamente
+  ├─▶ PostgreSQL? → salva no Redis + retorna
+  └─▶ AI Service  → salva no PG → salva no Redis → retorna
 ```
 
 ---
 
 ## Banco de Dados
 
-### Entidades principais
-
 ```
-users
-├── id, name (AES-GCM), email (unique), password (BCrypt), role
-├── created_by, created_at, last_modified_by, last_modified_date
-└── [Auditable]
-
-vehicle_specs
-├── id, brand, model, version, year (unique constraint: brand+model+version+year)
-├── engine, horsepower, torque, drivetrain, topSpeed, acceleration
-├── length, width, height, weight, electricRange, price
-└── [Auditable]
-
-refresh_tokens
-└── id, token (UUID), user_id, expiresAt
-
-user_sessions
-└── id, user_id, sessionToken, deviceInfo, ipAddress, browserApp, lastActive, active
-
-garage_vehicles
-├── id, user_id, vehicle_spec_id, fleetType (PERSONAL|WORK), nickname, active
-└── [Auditable]
-
-user_history
-└── id, user_id, actionType (ANALYSIS|COMPARISON|SERVICE_RECORD), title, description, referenceId, deleted
-
-saved_comparisons
-├── id, user_id, vehicle_a_id, vehicle_b_id, title
-└── [Auditable]
+users              id, name (AES-GCM), email (unique), password (BCrypt), role + Auditable
+vehicle_specs      id, brand, model, version, year (unique: brand+model+version+year),
+                   engine, horsepower, torque, drivetrain, topSpeed, acceleration,
+                   length, width, height, weight, electricRange, price + Auditable
+refresh_tokens     id, token (UUID), user_id, expiresAt
+user_sessions      id, user_id, sessionToken, deviceInfo, ipAddress, browserApp, lastActive, active
+garage_vehicles    id, user_id, vehicle_spec_id, fleetType, nickname, active + Auditable
+user_history       id, user_id, actionType, title, description, referenceId, deleted
+saved_comparisons  id, user_id, vehicle_a_id, vehicle_b_id, title + Auditable
 ```
 
-### JPA Auditing
-```java
-// AuditorAwareImpl.java
-@Override
-public Optional<String> getCurrentAuditor() {
-    Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-    if (auth == null || "anonymousUser".equals(auth.getPrincipal()))
-        return Optional.of("SYSTEM");
-    return Optional.of(auth.getName()); // email do usuário autenticado
-}
-```
+Schema versionado com **Flyway** em produção (`ddl-auto: validate`). Auditoria via **JPA Auditing** (`createdBy`, `createdAt`, `lastModifiedBy`, `lastModifiedDate`).
 
 ---
 
 ## Infraestrutura Docker
 
 ```yaml
-# docker-compose.yml
 services:
   nginx:      # TLS 1.2/1.3, redirect HTTP→HTTPS, reverse proxy
   backend:    # Spring Boot, 512MB max, logs rotacionados (10MB x 3)
@@ -429,36 +522,13 @@ services:
   redis:      # Redis 7 Alpine, cache TTL 1h
 ```
 
-### Configurações de produção notáveis
-
-```yaml
-# Backend
-environment:
-  JAVA_OPTS: "-Xmx384m -Xms256m"  # otimizado para t3.micro (1GB RAM)
-  SPRING_PROFILES_ACTIVE: prod
-
-logging:
-  driver: "json-file"
-  options:
-    max-size: "10m"
-    max-file: "3"      # máx 30MB de logs por container
-```
-
-### Nginx
-
-```nginx
-ssl_protocols TLSv1.2 TLSv1.3;          # apenas protocolos modernos
-proxy_pass http://backend:8080;           # rede interna Docker
-# HTTP → HTTPS redirect 301 automático
-```
-
-O backend **não expõe porta externamente** — acessível apenas via Nginx na rede interna Docker.
+Backend otimizado para t3.micro: `JAVA_OPTS: "-Xmx384m -Xms256m"`, `SPRING_PROFILES_ACTIVE: prod`.
 
 ---
 
 ## Variáveis de Ambiente
 
-### `infra/docker/.env`
+`infra/docker/.env`:
 
 ```env
 # PostgreSQL
@@ -480,51 +550,35 @@ DB_CRYPTO_KEY=chave-32-bytes-exata-aqui
 FRONTEND_URL=https://autospec-mobile.vercel.app
 ```
 
-### `application-prod.yaml`
-
-```yaml
-spring:
-  jpa:
-    hibernate:
-      ddl-auto: validate    # Flyway controla o schema em produção
-    show-sql: false         # sem queries nos logs de produção
-  flyway:
-    enabled: true
-    baseline-on-migrate: true
-  cache:
-    type: redis
-    redis:
-      time-to-live: 3600000  # 1 hora
-
-app:
-  retention:
-    specs-months: 6          # specs com mais de 6 meses são deletadas
-    history-months: 12
-    sessions-days: 30
-```
-
 ---
 
 ## Como Rodar Localmente
 
-### Pré-requisitos
-- Java 17+
-- Maven 3.8+
-- Docker e Docker Compose
+**Pré-requisitos:** Java 17+, Maven 3.8+, Docker e Docker Compose.
 
-### 1. Clone o repositório
 ```bash
+# 1. Clonar
 git clone https://github.com/Brunootavioliveira/autospec-intelligence-platform.git
 cd autospec-intelligence-platform
-```
 
-### 2. Configure as variáveis de ambiente
-```bash
+# 2. Variáveis de ambiente
 cp infra/docker/.env.example infra/docker/.env
 # edite com seus valores
+
+# 3. Certificados SSL (autoassinados)
+mkdir -p infra/docker/nginx/certs
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout infra/docker/nginx/certs/key.pem \
+  -out infra/docker/nginx/certs/cert.pem \
+  -subj "/CN=localhost"
+
+# 4. Infraestrutura de apoio
+cd infra/docker
+docker compose up -d postgres redis ai-service nginx
 ```
 
-### 3. Crie o `application-dev.yaml`
+Crie o `application-dev.yaml`:
+
 ```yaml
 spring:
   jpa:
@@ -535,91 +589,50 @@ spring:
     enabled: false
 ```
 
-### 4. Gere os certificados SSL
 ```bash
-mkdir -p infra/docker/nginx/certs
-openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout infra/docker/nginx/certs/key.pem \
-  -out infra/docker/nginx/certs/cert.pem \
-  -subj "/CN=localhost"
+# 5. Rodar o backend (perfil dev, porta 8080) na IDE ou:
+cd backend
+mvn spring-boot:run -Dspring-boot.run.profiles=dev
 ```
 
-### 5. Suba a infraestrutura
-```bash
-cd infra/docker
-docker compose up -d postgres redis ai-service nginx
-```
-
-### 6. Rode o backend na IDE
-```
-Perfil: dev
-Porta: 8080
-```
-
-### 7. Acesse o Swagger
-```
-https://localhost:8443/swagger-ui/index.html
-```
+Acesse: `https://localhost:8443/swagger-ui/index.html` (aceite o aviso do certificado local, como descrito no topo).
 
 ---
 
 ## Deploy na AWS EC2
 
 ```bash
-# 1. Conectar na EC2
 ssh -i ~/.ssh/autospec-key.pem ubuntu@SEU_IP
 
-# 2. Instalar Docker
 sudo apt update && sudo apt install -y docker.io docker-compose-plugin
-sudo usermod -aG docker ubuntu
-# reconectar SSH para aplicar o grupo
+sudo usermod -aG docker ubuntu   # reconecte o SSH
 
-# 3. Clonar o projeto
 git clone https://github.com/Brunootavioliveira/autospec-intelligence-platform.git
 cd autospec-intelligence-platform/infra/docker
-
-# 4. Configurar variáveis
 nano .env
 
-# 5. Gerar certificados SSL
 mkdir -p nginx/certs
 openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-  -keyout nginx/certs/key.pem \
-  -out nginx/certs/cert.pem \
-  -subj "/CN=SEU_IP"
+  -keyout nginx/certs/key.pem -out nginx/certs/cert.pem -subj "/CN=SEU_DOMINIO_OU_IP"
 
-# 6. Subir todos os containers
 sudo docker compose up -d --build
-
-# 7. Verificar
 sudo docker ps
-curl -k https://localhost:8443/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"seu@email.com","password":"suasenha"}'
 ```
 
-### Comandos úteis em produção
+Comandos úteis:
 
 ```bash
-# Ver logs do backend em tempo real
-sudo docker logs autospec-backend -f
-
-# Reiniciar só o backend após mudança
-sudo docker compose up -d --build backend
-
-# Acessar o banco de dados
+sudo docker logs autospec-backend -f                 # logs em tempo real
+sudo docker compose up -d --build backend            # rebuild só do backend
 sudo docker exec -it autospec-postgres psql -U postgres -d autospec_db
-
-# Ver uso de memória dos containers
-sudo docker stats --no-stream
+sudo docker stats --no-stream                        # uso de memória
 ```
 
 ---
 
 ## Endpoints da API
 
-Documentação interativa completa disponível no Swagger:  
-`https://18.216.83.72:8443/swagger-ui/index.html`
+Documentação interativa completa no [Swagger](https://autospec.duckdns.org:8443/swagger-ui/index.html).
 
 ### Authentication — `/api/v1/auth`
 
@@ -698,68 +711,29 @@ Documentação interativa completa disponível no Swagger:
 
 ---
 
-## Papéis e Permissões (RBAC)
+## Decisões Técnicas
 
-```
-VIEWER  → leitura de todas as specs, análises e comparações
-ANALYST → VIEWER + geração de specs via IA + relatórios PDF
-ADMIN   → ANALYST + delete de specs + gestão de usuários
-```
-
-Novos usuários são registrados automaticamente como `VIEWER`. Um ADMIN pode promover qualquer usuário via `PATCH /api/v1/users/{id}/role`.
-
----
-
-## Padrões e Decisões Técnicas
-
-### Arquitetura Modular
-O projeto usa uma arquitetura modular por domínio (`modules/auth`, `modules/vehicle`, etc.) em vez da separação clássica por camada (`controllers/`, `services/`, `repositories/`). Isso melhora a coesão e facilita a evolução independente de cada módulo.
-
-### Sessão STATELESS
-Nenhum estado é armazenado no servidor. Cada requisição é autenticada pelo JWT — o servidor nunca guarda sessões em memória. Isso permite escalar horizontalmente sem sincronização.
-
-### WebClient em vez de RestTemplate
-A comunicação com o AI Service usa `WebClient` (Spring WebFlux), mais moderno e com suporte a timeout configurável:
-```java
-// AppConfig.java
-WebClient.builder()
-    .baseUrl(aiServiceUrl)
-    .clientConnector(new ReactorClientHttpConnector(
-        HttpClient.create().responseTimeout(Duration.ofSeconds(10))
-    ))
-    .build();
-```
-
-### MapStruct para mapeamento
-Zero reflexão em runtime. O MapStruct gera o código de mapeamento em tempo de compilação, sendo mais performático que frameworks como ModelMapper.
-
-### Soft Delete na Garage e History
-Registros removidos ficam com `active = false` ou `deleted = true`. Isso preserva o histórico e permite auditoria futura sem perder dados.
-
-### Whitelist de parâmetros no Report
-```java
-private static final Set<String> ALLOWED_PARAMS =
-    Set.of("ENGINE", "PERFORMANCE", "PRICE", "SAFETY", "DIMENSIONS");
-```
-Proteção contra injeção de parâmetros inválidos no gerador de PDF.
+- **Arquitetura modular por domínio** em vez de pastas por camada: melhor coesão e evolução independente
+- **STATELESS + JWT**: permite escalar horizontalmente sem sincronizar sessão
+- **WebClient** (WebFlux) para o AI Service, com timeout de 10s
+- **MapStruct**: mapeamento gerado em compilação, sem reflexão em runtime
+- **Soft delete** em Garage e History: preserva histórico para auditoria
+- **Microserviço de IA separado**: isola a dependência do Gemini e permite evoluir/substituir o modelo sem tocar no backend
+- **Cache Redis**: reduz custo e latência de chamadas à IA
 
 ---
 
 ## Autores
 
-Desenvolvido como projeto acadêmico para o **Projeto FORD** — Engenharia de Software.
+Projeto acadêmico — **Ford Challenge FIAP 2026** — Engenharia de Software.
 
-Bruno Otavio Silva De Oliveira RM556196
-
-Guilherme Flores Pereira de Almeida RM554948
-
-Luiz Fernando de Aragão Souza RM555561
-
-Bruno Otavio Silva De Oliveira RM556196
-
-Marcello de Freitas Moreira RM557531
-
-Leonardo Gonçalves Novaes RM554807
+| Nome | RM |
+|---|---|
+| Bruno Otavio Silva De Oliveira | RM556196 |
+| Guilherme Flores Pereira de Almeida | RM554948 |
+| Luiz Fernando de Aragão Souza | RM555561 |
+| Marcello de Freitas Moreira | RM557531 |
+| Leonardo Gonçalves Novaes | RM554807 |
 
 ---
 
